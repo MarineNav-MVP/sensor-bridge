@@ -21,3 +21,8 @@
 ### Установка
 ```bash
 pip install -r requirements.txt
+
+
+## Контракты
+
+https://github.com/dlameros/project-config/blob/main/CONTRACTS.md
