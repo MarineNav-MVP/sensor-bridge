@@ -1,3 +1,26 @@
+"""
+# SensorBridge Module
+
+Модуль для эмуляции сенсоров судна (GPS + Радар).
+
+## Что делает:
+- Эмулирует GPS-приёмник (координаты, курс, скорость своего судна)
+- Эмулирует радар (обнаружение целей: пеленг, дистанция, курс, скорость)
+- Публикует данные в MQTT-топики
+
+## Топики MQTT:
+- `sensors/nmea/raw` — данные GPS своего судна
+- `sensors/radar/targets` — цели от радара (массив)
+
+## Как запустить:
+1. Установи зависимости: `pip install -r requirements.txt`
+2. Настрой `.env` (адрес брокера, интервал)
+3. Запусти: `python main.py`
+
+## Контракты:
+https://github.com/dlameros/project-config/blob/main/CONTRACTS.md
+"""
+
 # main.py - SensorBridge: GPS + Радар эмулятор
 import os
 import time
