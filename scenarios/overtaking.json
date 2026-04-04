@@ -3,28 +3,24 @@
   "rule": "COLREGS-13",
   "description": "Мы догоняем другое судно. Мы уступаем.",
   "own_ship": {
-    "lat": 55.751244,
-    "lon": 37.618423,
+    "id": "OWN",
+    "start": {"lat": 55.751244, "lon": 37.618423},
     "course": 180.0,
     "speed": 15.0,
-    "type": "cargo"
+    "ship_type": "cargo"
   },
   "targets": [
     {
-      "id": "R01",
-      "bearing": 180.0,
-      "distance": 2.0,
+      "id": "TR01",
+      "start": {"lat": 55.745000, "lon": 37.618423},
       "course": 180.0,
       "speed": 10.0,
-      "type": "cargo",
-      "cpa": 0.2,
-      "tcpa": 6.0
+      "ship_type": "cargo"
     }
   ],
-  "expected_outcome": {
-    "action": "MAINTAIN_COURSE",
-    "direction": null,
-    "degrees": 0,
-    "alert_level": "INFO"
+  "simulation": {
+    "duration_min": 30,
+    "update_hz": 1.0,
+    "radar_range_nm": 12.0
   }
 }

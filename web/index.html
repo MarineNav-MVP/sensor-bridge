@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarineNav - Sensor Bridge Dashboard</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>⚓ MarineNav Sensor Bridge</h1>
+            <div class="connection-status" id="connectionStatus">
+                <span class="status-dot"></span>
+                <span class="status-text">Disconnected</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Control Panel -->
+            <aside class="control-panel">
+                <h2>🎛 Control Panel</h2>
+                
+                <!-- Simulation Controls -->
+                <div class="control-section">
+                    <h3>Simulation</h3>
+                    <div class="control-group">
+                        <label for="scenarioSelect">Scenario:</label>
+                        <select id="scenarioSelect">
+                            <option value="crossing_starboard">Crossing (Starboard)</option>
+                            <option value="head_on">Head-On Situation</option>
+                            <option value="overtaking">Overtaking</option>
+                        </select>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="btnStart" class="btn btn-primary">▶ Start</button>
+                        <button id="btnStop" class="btn btn-danger">⏹ Stop</button>
+                        <button id="btnRestart" class="btn btn-warning">🔄 Restart</button>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="timeScaleSlider">Time Scale: <span id="timeScaleValue">1x</span></label>
+                        <input type="range" id="timeScaleSlider" min="1" max="100" value="1" step="1">
+                    </div>
+                </div>
+
+                <!-- Camera PTZ Controls -->
+                <div class="control-section">
+                    <h3>📷 PTZ Camera</h3>
+                    <div class="camera-status">
+                        <div class="status-row">
+                            <span>Pan:</span>
+                            <span id="cameraPan">0°</span>
+                        </div>
+                        <div class="status-row">
+                            <span>Tilt:</span>
+                            <span id="cameraTilt">0°</span>
+                        </div>
+                        <div class="status-row">
+                            <span>Zoom:</span>
+                            <span id="cameraZoom">1x</span>
+                        </div>
+                        <div class="status-row">
+                            <span>Status:</span>
+                            <span id="cameraMoving">Idle</span>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="cameraPanSlider">Pan:</label>
+                        <input type="range" id="cameraPanSlider" min="-180" max="180" value="0">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="cameraTiltSlider">Tilt:</label>
+                        <input type="range" id="cameraTiltSlider" min="-30" max="30" value="0">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="cameraZoomSelect">Zoom:</label>
+                        <select id="cameraZoomSelect">
+                            <option value="1">1x</option>
+                            <option value="2">2x</option>
+                            <option value="5">5x</option>
+                            <option value="10">10x</option>
+                        </select>
+                    </div>
+                    
+                    <button id="btnCameraMove" class="btn btn-primary">Move Camera</button>
+                </div>
+
+                <!-- Statistics -->
+                <div class="control-section">
+                    <h3>📊 Statistics</h3>
+                    <div class="statistics">
+                        <div class="stat-item">
+                            <span class="stat-label">Speed:</span>
+                            <span id="statSpeed" class="stat-value">0.0 kn</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Course:</span>
+                            <span id="statCourse" class="stat-value">0°</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Targets:</span>
+                            <span id="statTargets" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Lat:</span>
+                            <span id="statLat" class="stat-value">0.000000</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Lon:</span>
+                            <span id="statLon" class="stat-value">0.000000</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Map Container -->
+            <main class="map-container">
+                <div id="map"></div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Paho MQTT -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    
+    <!-- Application Scripts -->
+    <script src="map.js"></script>
+    <script src="control.js"></script>
+</body>
+</html>

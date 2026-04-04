@@ -1,0 +1,278 @@
+/* style.css - MarineNav Sensor Bridge Dashboard */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #1a1a2e;
+    color: #eee;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Header */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background-color: #16213e;
+    border-bottom: 2px solid #0f3460;
+}
+
+.header h1 {
+    font-size: 1.5rem;
+    color: #e94560;
+}
+
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: #0f3460;
+    border-radius: 20px;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #666;
+}
+
+.connection-status.connected .status-dot {
+    background-color: #4ade80;
+    box-shadow: 0 0 8px #4ade80;
+}
+
+.connection-status.disconnected .status-dot {
+    background-color: #ef4444;
+}
+
+.status-text {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Main Content */
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Control Panel */
+.control-panel {
+    width: 320px;
+    background-color: #16213e;
+    padding: 20px;
+    overflow-y: auto;
+    border-right: 2px solid #0f3460;
+}
+
+.control-panel h2 {
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+    color: #e94560;
+}
+
+.control-section {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #0f3460;
+}
+
+.control-section:last-child {
+    border-bottom: none;
+}
+
+.control-section h3 {
+    font-size: 1rem;
+    margin-bottom: 15px;
+    color: #fff;
+}
+
+.control-group {
+    margin-bottom: 15px;
+}
+
+.control-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: #aaa;
+    margin-bottom: 5px;
+}
+
+.control-group input[type="range"] {
+    width: 100%;
+    margin-top: 5px;
+}
+
+.control-group select {
+    width: 100%;
+    padding: 8px;
+    background-color: #0f3460;
+    color: #fff;
+    border: 1px solid #1a1a2e;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background-color: #e94560;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background-color: #ff6b6b;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+.btn-danger:hover {
+    background-color: #ff4757;
+}
+
+.btn-warning {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.btn-warning:hover {
+    background-color: #ffdb4d;
+}
+
+/* Camera Status */
+.camera-status {
+    background-color: #0f3460;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    font-size: 0.85rem;
+}
+
+.status-row span:first-child {
+    color: #aaa;
+}
+
+.status-row span:last-child {
+    color: #fff;
+    font-weight: 600;
+}
+
+/* Statistics */
+.statistics {
+    background-color: #0f3460;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #1a1a2e;
+}
+
+.stat-item:last-child {
+    border-bottom: none;
+}
+
+.stat-label {
+    color: #aaa;
+    font-size: 0.85rem;
+}
+
+.stat-value {
+    color: #4ade80;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* Map Container */
+.map-container {
+    flex: 1;
+    position: relative;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+}
+
+/* Leaflet Custom Styles */
+.leaflet-popup-content-wrapper {
+    background-color: #16213e;
+    color: #fff;
+}
+
+.leaflet-popup-tip {
+    background-color: #16213e;
+}
+
+.ship-marker {
+    transition: all 0.3s ease;
+}
+
+.own-ship-icon {
+    filter: drop-shadow(0 0 8px #e94560);
+}
+
+.target-ship-icon {
+    filter: drop-shadow(0 0 4px #4ade80);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;
+    }
+    
+    .control-panel {
+        width: 100%;
+        max-height: 40vh;
+        border-right: none;
+        border-bottom: 2px solid #0f3460;
+    }
+    
+    .map-container {
+        height: 60vh;
+    }
+}

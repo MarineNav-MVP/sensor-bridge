@@ -5,6 +5,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import json
 import os
+import time
+import math
 from typing import Dict, Any, List
 from core.ship_state import ShipState, Position
 
@@ -26,13 +28,15 @@ def load_scenario(filepath: str) -> Dict[str, Any]:
 def create_own_ship_from_scenario(scenario: Dict[str, Any]) -> ShipState:
     """Создаёт ShipState из данных сценария"""
     import time
-    data = scenario['own_ship']
+    data = scenario.get('own_ship', {})
+    # Поддержка обоих форматов: "start" и прямой lat/lon
+    pos_data = data.get('start') or data
     return ShipState(
-        position=Position(lat=data['lat'], lon=data['lon']),
-        course=data['course'],
-        speed=data['speed'],
-        ship_id="OWN",
-        ship_type=data.get('type', 'cargo'),
+        position=Position(lat=pos_data.get('lat', 55.751244), lon=pos_data.get('lon', 37.618423)),
+        course=data.get('course', 0),
+        speed=data.get('speed', 10),
+        ship_id=data.get('id', 'OWN'),
+        ship_type=data.get('ship_type') or data.get('type', 'cargo'),
         timestamp=time.time()
     )
 
@@ -102,14 +106,17 @@ def create_moving_targets(scenario: Dict[str, Any]) -> List[MovingTarget]:
     """Создаёт список движущихся целей из сценария"""
     targets = []
     for t in scenario.get('targets', []):
-        pos = Position(lat=t['initial_position']['lat'], 
-                      lon=t['initial_position']['lon'])
+        # Поддержка обоих форматов: "start" и "initial_position"
+        pos_data = t.get('start') or t.get('initial_position')
+        if not pos_data:
+            continue
+        pos = Position(lat=pos_data['lat'], lon=pos_data['lon'])
         targets.append(MovingTarget(
             target_id=t['id'],
             position=pos,
             course=t['course'],
             speed=t['speed'],
-            ship_type=t.get('type', 'cargo')
+            ship_type=t.get('ship_type') or t.get('type', 'cargo')
         ))
     return targets
 

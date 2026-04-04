@@ -3,28 +3,24 @@
   "rule": "COLREGS-15",
   "description": "Цель пересекает курс справа налево. Мы должны уступить.",
   "own_ship": {
-    "lat": 55.751244,
-    "lon": 37.618423,
-    "course": 180.0,
+    "id": "OWN",
+    "start": {"lat": 55.751244, "lon": 37.618423},
+    "course": 0.0,
     "speed": 10.5,
-    "type": "cargo"
+    "ship_type": "cargo"
   },
   "targets": [
     {
-      "id": "R01",
-      "initial_position": {
-        "lat": 55.752000,
-        "lon": 37.620000
-      },
+      "id": "TR01",
+      "start": {"lat": 55.752000, "lon": 37.620000},
       "course": 270.0,
       "speed": 12.0,
-      "type": "cargo"
+      "ship_type": "cargo"
     }
   ],
-  "expected_outcome": {
-    "action": "CHANGE_COURSE",
-    "direction": "RIGHT",
-    "degrees": 20,
-    "alert_level": "WARNING"
+  "simulation": {
+    "duration_min": 30,
+    "update_hz": 1.0,
+    "radar_range_nm": 12.0
   }
 }
