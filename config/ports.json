@@ -1,0 +1,53 @@
+{
+  "name": "Kronstadt Bay Test Area",
+  "description": "Игрушечная карта на реальных координатах (Финский залив)",
+  "bounds": {
+    "north": 56.05,
+    "south": 55.70,
+    "east": 30.00,
+    "west": 29.70
+  },
+  "ports": [
+    {
+      "id": "PORT_A",
+      "name": "Kronstadt",
+      "lat": 59.9933,
+      "lon": 29.7658,
+      "type": "cargo"
+    },
+    {
+      "id": "PORT_B", 
+      "name": "St.Petersburg",
+      "lat": 59.9343,
+      "lon": 30.3351,
+      "type": "passenger"
+    },
+    {
+      "id": "PORT_C",
+      "name": "Nearby Port",
+      "lat": 59.9800,
+      "lon": 29.8000,
+      "type": "fishing"
+    }
+  ],
+  "shipping_lanes": [
+    {
+      "id": "LANE_1",
+      "from": "PORT_A",
+      "to": "PORT_B",
+      "recommended_depth_m": 12
+    },
+    {
+      "id": "LANE_2",
+      "from": "PORT_C",
+      "to": "PORT_A",
+      "recommended_depth_m": 8
+    },
+    {
+      "id": "LANE_3",
+      "from": "PORT_A",
+      "to": "PORT_C",
+      "recommended_depth_m": 6
+    }
+  ]
+}

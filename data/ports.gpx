@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1">
+  <wpt lat="59.9933" lon="29.7658">
+    <name>Kronstadt</name>
+    <desc>Port A</desc>
+  </wpt>
+  <wpt lat="59.9343" lon="30.3351">
+    <name>St.Petersburg</name>
+    <desc>Port B</desc>
+  </wpt>
+  <wpt lat="59.9500" lon="29.9000">
+    <name>Fishing Village</name>
+    <desc>Port C</desc>
+  </wpt>
+</gpx>
