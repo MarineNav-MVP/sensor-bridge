@@ -1,24 +1,19 @@
-# 📡 SensorBridge Module
+# 🚢 Sensor Bridge
 
-Модуль для работы с аппаратным обеспечением: GPS, радар, PTZ-камера.
+Эмулятор морских сенсоров для тестирования FusionCore (CV) и NavLogic (МППСС).
 
-## 🎯 Задача
-- Парсинг NMEA 0183 (GPS, компас)
-- Чтение данных радара ($TTM или API)
-- Управление PTZ-камерой (ONVIF/VISCA)
-- Публикация данных в MQTT
+## 📦 Быстрый старт
 
-## 📋 Текущая задача
-Смотри в Issue #1: [Реализовать парсер NMEA и эмулятор радара](../../issues/1)
+```bash
+# 1. MQTT брокер
+docker run -d -p 1883:1883 eclipse-mosquitto
 
-## 🚀 Быстрый старт
+# 2. Зависимости
+pip install -r requirements.txt
 
-### Требования
-- Python 3.8+
-- Docker (для MQTT брокера)
-- Библиотеки: `paho-mqtt`, `pynmea2`
+# 3. Запуск
+python main.py
 
-## Контракты
-https://github.com/dlameros/project-config/blob/main/CONTRACTS.md
-
-
+# 4. Веб-панель
+cd web && python -m http.server 8000
+# Открыть: http://localhost:8000
