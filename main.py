@@ -1,4 +1,4 @@
-# main.py - SensorBridge с реалистичной физикой движения
+# main.py - SensorBridge с реалистичной физикой и живым трафиком
 
 import sys
 import os
@@ -13,17 +13,15 @@ from dotenv import load_dotenv
 import paho.mqtt.client as mqtt
 
 # Импорт наших модулей
-from core.ship_state import ShipState, Position, Controls
+from core.ship_state import ShipState, Position, Controls, RadarTarget
 from core.ship_dynamics import ShipDynamics, ShipParameters, Environment
 from sensors.gps_emulator import GPSEmulator
 from sensors.radar_emulator import RadarEmulator
 
-from scenarios.loader import load_scenario, create_own_ship_from_scenario, create_targets_from_scenario
-
 # Загружаем настройки из .env
 load_dotenv()
 
-# === КОНФИГУРАЦИЯ MQTT ===
+# === КОНФИГУРАЦИЯ ===
 MQTT_HOST = os.getenv("MQTT_HOST", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_CLIENT_ID = os.getenv("MQTT_CLIENT_ID", "sensor-bridge")
@@ -41,44 +39,61 @@ OWN_COURSE = float(os.getenv("OWN_COURSE", "180.0"))
 OWN_SPEED = float(os.getenv("OWN_SPEED", "10.5"))
 
 # Настройки физики
-SHIP_TYPE = os.getenv("SHIP_TYPE", "cargo")  # yacht, fishing, cargo, tanker, passenger
+SHIP_TYPE = os.getenv("SHIP_TYPE", "cargo")
 USE_CURRENT = os.getenv("USE_CURRENT", "false").lower() == "true"
 CURRENT_SPEED = float(os.getenv("CURRENT_SPEED", "2.0"))
 CURRENT_DIRECTION = float(os.getenv("CURRENT_DIRECTION", "90.0"))
 
-# Автопилот (для тестов)
-AUTOPILOT_ENABLED = os.getenv("AUTOPILOT_ENABLED", "false").lower() == "true"
-TARGET_COURSE = float(os.getenv("TARGET_COURSE", "180.0"))
-TARGET_SPEED = float(os.getenv("TARGET_SPEED", "10.5"))
+# Режим управления
+STEERING_MODE = os.getenv("STEERING_MODE", "manual")
+MANUAL_COURSE = float(os.getenv("MANUAL_COURSE", "180.0"))
+MANUAL_SPEED = float(os.getenv("MANUAL_SPEED", "10.5"))
 
-#Сценарии
-SCENARIO_NAME = os.getenv("SCENARIO_NAME", "") 
+# Режим целей (random, traffic, scenario)
+TARGET_MODE = os.getenv("TARGET_MODE", "random")
+AREA_CONFIG = os.getenv("AREA_CONFIG", "config/ports.json")
+SCENARIO_NAME = os.getenv("SCENARIO_NAME", "")
+
+# Будущее: подписка на команды
+LISTEN_FOR_COMMANDS = os.getenv("LISTEN_FOR_COMMANDS", "false").lower() == "true"
+COMMAND_TOPIC = os.getenv("COMMAND_TOPIC", "control/autopilot/command")
 
 # Глобальное состояние
 connected = False
 client = None
+external_command = None
 
 
 def on_connect(client, userdata, flags, rc):
-    """Callback при подключении к MQTT брокеру"""
     global connected
     if rc == 0:
         print(f"✅ Подключено к MQTT брокеру {MQTT_HOST}:{MQTT_PORT}")
         connected = True
+        if LISTEN_FOR_COMMANDS:
+            client.subscribe(COMMAND_TOPIC)
+            print(f"📡 Подписка на {COMMAND_TOPIC}")
     else:
         print(f"❌ Ошибка подключения. Код: {rc}")
         connected = False
 
 
+def on_message(client, userdata, msg):
+    global external_command
+    if LISTEN_FOR_COMMANDS and msg.topic == COMMAND_TOPIC:
+        try:
+            external_command = json.loads(msg.payload.decode())
+            print(f"📥 Получена команда: {external_command}")
+        except Exception as e:
+            print(f"❌ Ошибка парсинга команды: {e}")
+
+
 def on_disconnect(client, userdata, rc):
-    """Callback при отключении"""
     global connected
     print("🔌 Отключено от брокера")
     connected = False
 
 
 def create_own_ship() -> ShipState:
-    """Создаёт объект нашего судна с начальными параметрами"""
     return ShipState(
         position=Position(lat=OWN_LAT, lon=OWN_LON),
         course=OWN_COURSE,
@@ -90,199 +105,169 @@ def create_own_ship() -> ShipState:
 
 
 def create_environment() -> Environment:
-    """Создаёт объект внешних условий"""
     if USE_CURRENT:
         return Environment(
             current_speed=CURRENT_SPEED,
-            current_direction=CURRENT_DIRECTION,
-            wind_speed=0.0,
-            wind_direction=0.0,
-            wave_height=0.0
+            current_direction=CURRENT_DIRECTION
         )
     return Environment.calm()
 
 
-def calculate_autopilot_controls(ship: ShipState, 
-                                  target_course: float, 
-                                  target_speed: float) -> Controls:
-    """
-    Рассчитывает управление для автопилота.
-    
-    Args:
-        ship: Текущее состояние судна
-        target_course: Целевой курс
-        target_speed: Целевая скорость
-        
-    Returns:
-        Controls с throttle и rudder_angle
-    """
-    # === Управление скоростью ===
-    speed_error = target_speed - ship.speed
-    throttle = max(0.0, min(1.0, 0.5 + speed_error * 0.1))
-    
-    # === Управление курсом ===
-    # Разница курсов с учётом перехода через 360°
-    course_error = (target_course - ship.course + 180) % 360 - 180
-    
-    # Пропорциональное управление рулём
-    rudder_angle = max(-35.0, min(35.0, course_error * 1.5))
-    
-    return Controls(throttle=throttle, rudder_angle=rudder_angle)  # ✅ Исправлено
-
-
 def main():
-    """Основная функция SensorBridge"""
     global connected, client
     
-    print("🚀 SensorBridge запускается (с физикой движения)...")
+    print("🚀 SensorBridge запускается (с физикой и трафиком)...")
     print("=" * 70)
-    print(f"📍 Начальная позиция: {OWN_LAT}, {OWN_LON}")
+    print(f"📍 Позиция: {OWN_LAT}, {OWN_LON}")
     print(f"🧭 Курс: {OWN_COURSE}°, Скорость: {OWN_SPEED} уз")
-    print(f"🚢 Тип судна: {SHIP_TYPE}")
-    print(f"🌊 Течение: {'включено' if USE_CURRENT else 'выключено'}")
-    if USE_CURRENT:
-        print(f"   Скорость: {CURRENT_SPEED} уз, Направление: {CURRENT_DIRECTION}°")
-    print(f"🤖 Автопилот: {'включен' if AUTOPILOT_ENABLED else 'выключен'}")
-    if AUTOPILOT_ENABLED:
-        print(f"   Целевой курс: {TARGET_COURSE}°, Целевая скорость: {TARGET_SPEED} уз")
+    print(f"🚢 Тип: {SHIP_TYPE}")
+    print(f"🎛 Управление: {STEERING_MODE}")
+    print(f"🎯 Цели: {TARGET_MODE}")
     print(f"📡 MQTT: {MQTT_HOST}:{MQTT_PORT}")
-    print(f"📤 Топики:")
-    print(f"   - {TOPIC_NMEA_RAW} (JSON)")
-    print(f"   - {TOPIC_NMEA_STRING} (NMEA строки)")
-    print(f"   - {TOPIC_RADAR_TARGETS} (цели)")
-    print(f"⏱ Интервал обновления: {UPDATE_INTERVAL} сек")
     print("=" * 70)
     
     # === ИНИЦИАЛИЗАЦИЯ ===
-    
-    # Создаём параметры судна и физику
     ship_params = ShipParameters.for_type(SHIP_TYPE)
     dynamics = ShipDynamics(ship_params)
-    
-    print(f"\n📊 Параметры судна ({SHIP_TYPE}):")
-    print(f"   Длина: {ship_params.length_m} м")
-    print(f"   Водоизмещение: {ship_params.displacement_t} т")
-    print(f"   Макс. скорость: {ship_params.max_speed_knots} уз")
-    print(f"   Тормозной путь с {OWN_SPEED} уз: {dynamics.estimate_stop_distance(OWN_SPEED):.2f} NM")
-    
-    # Создаём эмуляторы
     gps_emulator = GPSEmulator(update_rate=1.0, noise_std=0.00001)
-    radar_emulator = RadarEmulator(
-        range_nm=12.0,
-        update_interval=UPDATE_INTERVAL,
-        noise_bearing=2.0,
-        noise_distance=0.01
-    )
+    radar_emulator = RadarEmulator(range_nm=12.0, update_interval=UPDATE_INTERVAL)
+    environment = create_environment()
     
-    # === ИНИЦИАЛИЗАЦИЯ СЦЕНАРИЯ ===
-    scenario_data = None
+    # Инициализация целей
+    traffic = None
     scenario_targets = []
+    moving_targets = []
+    current_target_mode = TARGET_MODE  # ✅ Копируем в локальную переменную
     
-    if SCENARIO_NAME:
+    if current_target_mode == "traffic":
+        from sensors.traffic_emulator import TrafficEmulator
+        traffic = TrafficEmulator(config_path=AREA_CONFIG)
+        print(f"🚢 Трафик: {len(traffic.ships)} судов")
+    elif current_target_mode == "scenario" and SCENARIO_NAME:
+        from scenarios.loader import load_scenario
         try:
             scenario_path = f"scenarios/{SCENARIO_NAME}.json"
             scenario_data = load_scenario(scenario_path)
-            own_ship = create_own_ship_from_scenario(scenario_data)
-            scenario_targets = create_targets_from_scenario(scenario_data)
-            print(f"📋 Загружен сценарий: {scenario_data['name']}")
-            print(f"   Правило: {scenario_data['rule']}")
-            print(f"   Описание: {scenario_data['description']}")
-            print(f"   Целей: {len(scenario_targets)}")
-        except FileNotFoundError:
-            print(f"⚠️  Сценарий '{SCENARIO_NAME}' не найден. Используем рандомные цели.")
-            own_ship = create_own_ship()
+            scenario_targets = scenario_data.get('targets', [])
+            print(f"📋 Сценарий: {scenario_data['name']} ({len(scenario_targets)} целей)")
         except Exception as e:
-            print(f"⚠️  Ошибка загрузки сценария: {e}. Используем рандомные цели.")
-            own_ship = create_own_ship()
+            print(f"⚠️ Ошибка сценария: {e}. Режим: random")
+            current_target_mode = "random"  # ✅ Меняем локальную копию
     else:
-        own_ship = create_own_ship()
+        print("🎲 Цели: рандомные")
     
-    environment = create_environment()
-    
-    # Начальное управление
+    own_ship = create_own_ship()
     controls = Controls(throttle=0.5, rudder_angle=0.0)
     
-    # Подключаемся к MQTT
+    # MQTT подключение
     client = mqtt.Client(client_id=MQTT_CLIENT_ID)
     client.on_connect = on_connect
+    client.on_message = on_message
     client.on_disconnect = on_disconnect
     
     print(f"\n🔄 Подключение к {MQTT_HOST}:{MQTT_PORT}...")
     client.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
     client.loop_start()
-    
-    # Ждём подключения
     time.sleep(1)
     
     if not connected:
-        print("❌ Не удалось подключиться к MQTT брокеру!")
-        print("Проверь: docker ps (должен работать mqtt_broker)")
+        print("❌ Нет подключения к брокеру!")
         return
     
-    print("\n🎉 SensorBridge готов к работе!\n")
+    print("\n🎉 SensorBridge готов!\n")
     
     last_update = time.time()
-    step_count = 0
     
     try:
         while True:
             current_time = time.time()
             delta = current_time - last_update
             
-            # === 1. Обновляем управление (автопилот или ручное) ===
-            if AUTOPILOT_ENABLED:
-                controls = calculate_autopilot_controls(own_ship, TARGET_COURSE, TARGET_SPEED)
+            # === 1. Управление ===
+            if STEERING_MODE == "manual":
+                controls = Controls(throttle=1.0 if MANUAL_SPEED > 0 else 0.0, rudder_angle=0.0)
+                # Физику применим ниже, а курс/скорость перезапишем ПОСЛЕ неё
+                own_ship.course = MANUAL_COURSE % 360
+                own_ship.speed = MANUAL_SPEED
+            elif STEERING_MODE == "steady":
+                course_error = (MANUAL_COURSE - own_ship.course + 180) % 360 - 180
+                rudder_angle = max(-35.0, min(35.0, course_error * 1.5))
+                speed_error = MANUAL_SPEED - own_ship.speed
+                throttle = max(0.0, min(1.0, 0.5 + speed_error * 0.1))
+                controls = Controls(throttle=throttle, rudder_angle=rudder_angle)
+            elif STEERING_MODE == "external" and external_command:
+                controls = Controls(
+                    throttle=external_command.get('throttle', 0.5),
+                    rudder_angle=external_command.get('rudder', 0.0)
+                )
             
-            # === 2. Обновляем состояние судна через физику ===
+            # === 2. Физика ===
             own_ship = dynamics.update(own_ship, controls, delta, environment)
             
-            # === 3. Генерируем GPS данные ===
-            gps_nmea = gps_emulator.generate_nmea_sentences(own_ship)
-            gps_json = gps_emulator.generate_json(own_ship)
+            # В ручном режиме перезаписываем курс/скорость (чтобы не падали от сопротивления)
+            if STEERING_MODE == "manual":
+                own_ship.course = MANUAL_COURSE % 360
+                own_ship.speed = MANUAL_SPEED
             
-            # Публикуем GPS JSON
+            # === 3. GPS ===
+            gps_json = gps_emulator.generate_json(own_ship)
             client.publish(TOPIC_NMEA_RAW, json.dumps(gps_json))
             
-            # === 4. Генерируем цели радара ===
-            if scenario_data and scenario_targets:
-                # Используем цели из сценария
+            # === 4. Цели радара ===
+            radar_targets = []
+            
+            if current_target_mode == "traffic" and traffic:
+                traffic.update(delta)
+                targets_data = traffic.get_radar_targets(own_ship, range_nm=12.0)
+
+                # 🔍 ОТЛАДКА: покажи все суда
+                print(f"   📊 Всего судов в трафике: {len(traffic.ships)}")
+                for ship in traffic.ships:
+                    dist = own_ship.position.distance_to(ship.state.position)
+                    print(f"      • {ship.id}: {ship.state.position.lat:.4f}, {ship.state.position.lon:.4f} (дистанция: {dist:.2f} NM)")
+                
+                print(f"   ✅ Видим целей радаром: {len(targets_data)}")
+    
+                for t in targets_data:
+                    
+                    # Создаём RadarTarget с absolute_position
+                    rt = RadarTarget(
+                        target_id=t['id'], 
+                        bearing=t['bearing'], 
+                        distance=t['distance'],
+                        course=t['course'], 
+                        speed=t['speed'], 
+                        timestamp=t['timestamp']
+                    )
+                    # Добавляем абсолютную позицию отдельно (для карты)
+                    if 'absolute_position' in t:
+                        rt.absolute_position = t['absolute_position']
+                    radar_targets.append(rt)
+            elif current_target_mode == "scenario" and scenario_targets:
+                # Для сценария используем статичные данные (упрощённо)
                 radar_targets = radar_emulator.update(own_ship, scenario_targets=scenario_targets)
             else:
-                # Рандомные цели
                 radar_targets = radar_emulator.update(own_ship, num_targets=random.randint(1, 3))
             
-            # Публикуем цели JSON
-            client.publish(TOPIC_RADAR_TARGETS, json.dumps(radar_emulator.generate_json(radar_targets)))
+            # Публикация целей
+            client.publish(TOPIC_RADAR_TARGETS, json.dumps([t.to_dict() for t in radar_targets]))
             
-            # === 5. Вывод в консоль ===
-            step_count += 1
-            if step_count % 10 == 0:  # Каждые 10 шагов печатаем подробно
-                print(f"📡 GPS: {own_ship.position.lat:.6f}, {own_ship.position.lon:.6f} | "
-                      f"Курс={own_ship.course:5.1f}° | Скорость={own_ship.speed:5.1f} уз | "
-                      f"Руль={controls.rudder_angle:5.1f}° | Газ={controls.throttle:.2f}")
-                print(f"📡 Радар: {len(radar_targets)} целей")
-                if radar_targets:
-                    dangerous = [t for t in radar_targets if t.cpa and t.cpa < 0.5 and t.tcpa and t.tcpa > 0]
-                    if dangerous:
-                        print(f"   ⚠️  ОПАСНЫЕ ЦЕЛИ: {len(dangerous)}")
-                        for t in dangerous:
-                            print(f"      {t.target_id}: CPA={t.cpa:.2f} NM, TCPA={t.tcpa:.1f} мин")
-                print("-" * 70)
+            # === 5. Вывод ===
+            print(f"📡 GPS: {own_ship.position.lat:.6f}, {own_ship.position.lon:.6f} | "
+                  f"Курс={own_ship.course:5.1f}° | Скорость={own_ship.speed:5.1f} уз")
+            print(f"   Радар: {len(radar_targets)} целей ({TARGET_MODE})")
             
-            # Публикуем NMEA строки (для тестов парсера)
-            for sentence in gps_nmea:
+            # NMEA строки
+            for sentence in gps_emulator.generate_nmea_sentences(own_ship):
                 client.publish(TOPIC_NMEA_STRING, sentence)
-            
-            # Публикуем NMEA $TTM строки
             for target in radar_targets:
-                ttm = radar_emulator.generate_nmea_ttm(target)
-                client.publish(TOPIC_NMEA_STRING, ttm)
+                client.publish(TOPIC_NMEA_STRING, radar_emulator.generate_nmea_ttm(target))
             
             last_update = current_time
             time.sleep(UPDATE_INTERVAL)
             
     except KeyboardInterrupt:
-        print("\n👋 Остановка SensorBridge...")
+        print("\n👋 Остановка...")
     finally:
         client.loop_stop()
         client.disconnect()

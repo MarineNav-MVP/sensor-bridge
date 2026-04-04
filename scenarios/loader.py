@@ -51,6 +51,67 @@ def get_available_scenarios() -> List[str]:
             files.append(f[:-5])  # убираем .json
     return files
 
+class MovingTarget:
+    """Движущаяся цель с обновляемой позицией"""
+    
+    def __init__(self, target_id: str, position: Position, 
+                 course: float, speed: float, ship_type: str = "cargo"):
+        self.id = target_id
+        self.position = position
+        self.course = course
+        self.speed = speed
+        self.ship_type = ship_type
+        self.timestamp = time.time()
+    
+    def update(self, delta_seconds: float):
+        """Обновляет позицию цели"""
+        distance_nm = self.speed * (delta_seconds / 3600)
+        course_rad = math.radians(self.course)
+        
+        delta_lat = (distance_nm * math.cos(course_rad)) / 60
+        delta_lon = (distance_nm * math.sin(course_rad)) / (60 * math.cos(math.radians(self.position.lat)))
+        
+        self.position.lat += delta_lat
+        self.position.lon += delta_lon
+        self.timestamp = time.time()
+    
+    def to_radar_target(self, own_ship: ShipState) -> dict:
+        """Конвертирует в формат для радара (пеленг/дистанция)"""
+        bearing = self.position.bearing_to(own_ship.position)
+        # Пеленг относительно курса нашего судна
+        relative_bearing = (bearing - own_ship.course + 360) % 360
+        
+        distance = self.position.distance_to(own_ship.position)
+        
+        return {
+            "id": self.id,
+            "bearing": round(relative_bearing, 2),
+            "distance": round(distance, 2),
+            "course": self.course,
+            "speed": self.speed,
+            "type": self.ship_type,
+            "timestamp": int(self.timestamp),
+            "absolute_position": {
+                "lat": self.position.lat,
+                "lon": self.position.lon
+            }
+        }
+
+
+def create_moving_targets(scenario: Dict[str, Any]) -> List[MovingTarget]:
+    """Создаёт список движущихся целей из сценария"""
+    targets = []
+    for t in scenario.get('targets', []):
+        pos = Position(lat=t['initial_position']['lat'], 
+                      lon=t['initial_position']['lon'])
+        targets.append(MovingTarget(
+            target_id=t['id'],
+            position=pos,
+            course=t['course'],
+            speed=t['speed'],
+            ship_type=t.get('type', 'cargo')
+        ))
+    return targets
 
 # Тест
 if __name__ == "__main__":

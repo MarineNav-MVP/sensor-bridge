@@ -8,7 +8,7 @@ import math
 import time
 import random
 from datetime import datetime, timezone
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from core.ship_state import ShipState, Position, RadarTarget
 
 
@@ -192,7 +192,10 @@ class RadarEmulator:
         """
         return [t.to_dict() for t in targets]
     
-    def update(self, own_ship: ShipState, num_targets: int = None, scenario_targets: List[dict] = None) -> List[RadarTarget]:
+    def update(self, own_ship: ShipState, 
+           num_targets: int = None, 
+           scenario_targets: List[dict] = None,
+           moving_targets: List[Any] = None) -> List[RadarTarget]:
         """
         Обновляет цели радара и рассчитывает CPA/TCPA.
         
@@ -201,6 +204,11 @@ class RadarEmulator:
             num_targets: Количество целей для генерации (если нет сценария)
             scenario_targets: Цели из сценария (если есть)
         """
+            # Если есть движущиеся цели — обновляем их позиции
+        if moving_targets:
+            for mt in moving_targets:
+                mt.update(self.update_interval)
+
         targets = []
         
         # Если есть сценарий — используем его цели

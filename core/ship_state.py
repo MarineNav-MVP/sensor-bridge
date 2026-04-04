@@ -107,19 +107,16 @@ class ShipState:
 
 @dataclass
 class RadarTarget:
-    """
-    Цель радара (ARPA track).
-    
-    Содержит относительные данные (пеленг и дистанция от нашего судна).
-    """
     target_id: str
-    bearing: float        # Пеленг в градусах (0-360, относительно носа)
-    distance: float       # Дистанция в морских милях
-    course: float         # Курс цели (абсолютный)
-    speed: float          # Скорость цели в узлах
-    timestamp: float      # UNIX timestamp
-    cpa: Optional[float] = None  # CPA (морские мили)
-    tcpa: Optional[float] = None  # TCPA (минуты)
+    bearing: float
+    distance: float
+    course: float
+    speed: float
+    timestamp: float
+    cpa: Optional[float] = None
+    tcpa: Optional[float] = None
+    ship_type: str = "cargo"
+    absolute_position: Optional[dict] = None  # ✅ Добавили поле
     
     def __post_init__(self):
         """Валидация"""
@@ -129,8 +126,7 @@ class RadarTarget:
             raise ValueError(f"Дистанция не может быть отрицательной, получено {self.distance}")
     
     def to_dict(self) -> dict:
-        """Конвертация в словарь (для JSON/MQTT)"""
-        return {
+        result = {
             "id": self.target_id,
             "bearing": round(self.bearing, 2),
             "distance": round(self.distance, 2),
@@ -138,8 +134,13 @@ class RadarTarget:
             "speed": round(self.speed, 1),
             "timestamp": int(self.timestamp),
             "cpa": round(self.cpa, 2) if self.cpa is not None else None,
-            "tcpa": round(self.tcpa, 1) if self.tcpa is not None else None
+            "tcpa": round(self.tcpa, 1) if self.tcpa is not None else None,
+            "type": self.ship_type
         }
+        # ✅ Добавляем absolute_position если есть
+        if self.absolute_position:
+            result["absolute_position"] = self.absolute_position
+        return result
     
     @classmethod
     def from_dict(cls, data: dict) -> 'RadarTarget':
