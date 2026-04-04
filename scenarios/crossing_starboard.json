@@ -4,15 +4,15 @@
   "description": "Цель пересекает курс справа налево. Мы должны уступить.",
   "own_ship": {
     "id": "OWN",
-    "start": {"lat": 55.751244, "lon": 37.618423},
+    "start": {"lat": 59.9933, "lon": 29.7658},
     "course": 0.0,
-    "speed": 10.5,
+    "speed": 10.0,
     "ship_type": "cargo"
   },
   "targets": [
     {
       "id": "TR01",
-      "start": {"lat": 55.752000, "lon": 37.620000},
+      "start": {"lat": 59.9975, "lon": 29.8125},
       "course": 270.0,
       "speed": 12.0,
       "ship_type": "cargo"

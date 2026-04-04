@@ -18,7 +18,7 @@ from core.ship_state import ShipState, Position, Controls, RadarTarget
 from core.ship_dynamics import ShipDynamics, ShipParameters, Environment
 from sensors.gps_emulator import GPSEmulator
 from sensors.radar_emulator import RadarEmulator
-from scenarios.loader import load_scenario, create_moving_targets, MovingTarget
+from scenarios.loader import load_scenario, create_moving_targets, MovingTarget, validate_scenario, calculate_cpa_tcpa
 
 # Загружаем настройки из .env
 load_dotenv()
@@ -135,6 +135,12 @@ def start_simulation(scenario_name):
         scenario_path = f"scenarios/{scenario_name}.json"
         scenario = load_scenario(scenario_path)
         
+        # Валидация сценария
+        if not validate_scenario(scenario):
+            print(f"❌ Сценарий {scenario_name} не прошёл валидацию!")
+            simulation_running = False
+            return
+        
         # Создаём наше судно из сценария
         own_data = scenario.get("own_ship", {})
         own_ship = ShipState(
@@ -154,6 +160,19 @@ def start_simulation(scenario_name):
         
         simulation_running = True
         print(f"🚀 Запущен сценарий: {scenario_name} ({len(moving_targets)} целей)")
+        print(f"📍 Наше судно: lat={own_ship.position.lat:.4f}, lon={own_ship.position.lon:.4f}, "
+              f"course={own_ship.course}°, speed={own_ship.speed} уз")
+        for t in moving_targets:
+            print(f"🎯 Цель {t.id}: lat={t.position.lat:.4f}, lon={t.position.lon:.4f}, "
+                  f"course={t.course}°, speed={t.speed} уз")
+        
+        # Первичный расчёт CPA/TCPA
+        for target in moving_targets:
+            dcpa, tcpa = calculate_cpa_tcpa(own_ship, target)
+            if tcpa > 0:
+                print(f"⏱  Начальный DCPA={dcpa:.2f} NM, TCPA={tcpa:.1f} мин")
+                if dcpa < 0.5 and tcpa < 10:
+                    print(f"⚠️  РИСК СТОЛКНОВЕНИЯ с {target.id}!")
         
     except Exception as e:
         print(f"❌ Ошибка запуска сценария: {e}")
@@ -357,6 +376,7 @@ def main():
     print("=" * 60)
     
     last_update = time.time()
+    last_cpa_log = 0
     
     try:
         while True:
@@ -381,6 +401,17 @@ def main():
                 # Обновление камеры
                 update_camera(dt)
                 publish_camera_status()
+                
+                # Логирование CPA/TCPA каждые 30 секунд
+                if current_time - last_cpa_log >= 30:
+                    print(f"\n⏱  T+{int((current_time - last_update) * time_scale / 60)} мин:")
+                    for target in moving_targets:
+                        dcpa, tcpa = calculate_cpa_tcpa(own_ship, target)
+                        print(f"  🎯 Цель {target.id}: DCPA={dcpa:.2f} NM, TCPA={tcpa:.1f} мин", end="")
+                        if dcpa < 0.5 and tcpa > 0 and tcpa < 10:
+                            print(" ⚠️  РИСК СТОЛКНОВЕНИЯ!", end="")
+                        print()
+                    last_cpa_log = current_time
                 
                 # Вывод статистики
                 print(f"\r📍 {own_ship.position.lat:.6f}, {own_ship.position.lon:.6f} | "
