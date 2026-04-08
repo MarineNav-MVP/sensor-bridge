@@ -172,6 +172,11 @@ function handleRadarTargets(data) {
     if (targetCountEl) {
         targetCountEl.textContent = data.length;
     }
+    
+    // Update target list for camera tracking
+    if (window.CameraWidget) {
+        window.CameraWidget.updateTargetList(data);
+    }
 }
 
 /**
@@ -204,6 +209,11 @@ function handleCameraStatus(data) {
     
     // Update camera display
     updateCameraDisplay();
+    
+    // Update camera widget visualization
+    if (window.CameraWidget) {
+        window.CameraWidget.update(data);
+    }
 }
 
 /**
@@ -340,9 +350,67 @@ function updateCameraDisplay() {
 }
 
 /**
- * Setup event listeners
+ * Setup event listeners for camera
  */
-function setupEventListeners() {
+function setupCameraEventListeners() {
+    // Selection target
+    const targetSelect = document.getElementById('targetSelect');
+    if (targetSelect) {
+        targetSelect.addEventListener('change', (e) => {
+            if (e.target.value) {
+                sendTargetSelection(e.target.value);
+            }
+        });
+    }
+    
+    // Update sliders in real-time
+    const panSlider = document.getElementById('cameraPanSlider');
+    const tiltSlider = document.getElementById('cameraTiltSlider');
+    
+    if (panSlider) {
+        panSlider.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            const valueEl = document.getElementById('cameraPanSliderValue');
+            if (valueEl) valueEl.textContent = `${value}°`;
+        });
+    }
+    
+    if (tiltSlider) {
+        tiltSlider.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            const valueEl = document.getElementById('cameraTiltSliderValue');
+            if (valueEl) valueEl.textContent = `${value}°`;
+        });
+    }
+}
+
+/**
+ * Send target selection command (for FusionCore)
+ */
+function sendTargetSelection(targetId) {
+    if (!mqttClient || !isConnected) {
+        console.error('❌ Not connected to MQTT');
+        return;
+    }
+    
+    // Command for FusionCore - select target for tracking
+    const command = {
+        action: 'select_target',
+        target_id: targetId
+    };
+    
+    // Publish to special topic (FusionCore should subscribe)
+    const message = new Paho.MQTT.Message(JSON.stringify(command));
+    message.destinationName = 'control/fusioncore/command';
+    
+    console.log('🎯 Target selection:', command);
+    mqttClient.send(message);
+}
+
+/**
+ * Setup event listeners for simulation controls
+ */
+function setupSimulationEventListeners() {
     // Start button
     const btnStart = document.getElementById('btnStart');
     if (btnStart) {
@@ -405,11 +473,23 @@ function initDashboard() {
         window.MapManager.initMap();
     }
     
+    // Initialize camera widget
+    if (window.CameraWidget) {
+        window.CameraWidget.init();
+    }
+    
+    // Setup event listeners for camera
+    if (window.CameraWidget && window.CameraWidget.setupEventListeners) {
+        window.CameraWidget.setupEventListeners();
+    } else {
+        setupCameraEventListeners();
+    }
+    
     // Initialize MQTT
     initMQTT();
     
-    // Setup event listeners
-    setupEventListeners();
+    // Setup simulation event listeners
+    setupSimulationEventListeners();
     
     // Auto-connect to MQTT
     setTimeout(() => {
