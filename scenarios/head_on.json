@@ -1,20 +1,20 @@
 {
-  "name": "Head-On Situation",
-  "rule": "COLREGS-14",
-  "description": "Суда идут встречными курсами. Оба поворачивают вправо.",
+  "name": "Overtaking Situation",
+  "rule": "COLREGS-13",
+  "description": "Мы догоняем другое судно. Мы уступаем.",
   "own_ship": {
     "id": "OWN",
     "start": {"lat": 59.9900, "lon": 29.7650},
     "course": 0.0,
-    "speed": 10.0,
+    "speed": 10.5,
     "ship_type": "cargo"
   },
   "targets": [
     {
       "id": "TR01",
-      "start": {"lat": 60.0233, "lon": 29.7650},
+      "start": {"lat": 59.9950, "lon": 29.7650},
       "course": 180.0,
-      "speed": 10.0,
+      "speed": 10.5,
       "ship_type": "cargo"
     }
   ],

@@ -6,13 +6,13 @@
     "id": "OWN",
     "start": {"lat": 59.9933, "lon": 29.7658},
     "course": 0.0,
-    "speed": 10.0,
+    "speed": 10.5,
     "ship_type": "cargo"
   },
   "targets": [
     {
       "id": "TR01",
-      "start": {"lat": 59.9975, "lon": 29.8125},
+      "start": {"lat": 59.9933, "lon": 29.7750},
       "course": 270.0,
       "speed": 12.0,
       "ship_type": "cargo"
