@@ -13,18 +13,19 @@ const ownShipIcon = L.divIcon({
     className: 'ship-marker own-ship-icon',
     html: `
         <div class="ship-with-camera">
-            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="ship-icon-svg">
-                <path d="M20 5L25 15L20 20L15 15L20 5Z" fill="#e94560"/>
-                <circle cx="20" cy="20" r="15" stroke="#e94560" stroke-width="2" fill="rgba(233,69,96,0.2)"/>
+            <svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg" class="ship-icon-svg">
+                <path d="M25 5L32 20L25 28L18 20L25 5Z" fill="#e94560"/>
+                <circle cx="25" cy="28" r="18" stroke="#e94560" stroke-width="2.5" fill="rgba(233,69,96,0.2)"/>
             </svg>
             <div class="camera-direction-indicator">
                 <div class="camera-beam"></div>
                 <div class="camera-dot"></div>
+                <div class="camera-arrow"></div>
             </div>
         </div>
     `,
-    iconSize: [60, 60],
-    iconAnchor: [30, 30]
+    iconSize: [80, 80],
+    iconAnchor: [40, 40]
 });
 
 const targetShipIcon = L.divIcon({
@@ -79,20 +80,21 @@ function updateOwnShip(data) {
             className: 'ship-marker own-ship-icon',
             html: `
                 <div class="ship-with-camera">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" 
+                    <svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg" 
                          class="ship-icon-svg" style="transform: rotate(${course}deg); transform-origin: center;">
-                        <path d="M20 5L25 15L20 20L15 15L20 5Z" fill="#e94560"/>
-                        <circle cx="20" cy="20" r="15" stroke="#e94560" stroke-width="2" fill="rgba(233,69,96,0.2)"/>
+                        <path d="M25 5L32 20L25 28L18 20L25 5Z" fill="#e94560"/>
+                        <circle cx="25" cy="28" r="18" stroke="#e94560" stroke-width="2.5" fill="rgba(233,69,96,0.2)"/>
                     </svg>
                     <div class="camera-direction-indicator" 
                          style="transform: rotate(${course + currentCameraPan}deg);">
                         <div class="camera-beam"></div>
                         <div class="camera-dot"></div>
+                        <div class="camera-arrow"></div>
                     </div>
                 </div>
             `,
-            iconSize: [60, 60],
-            iconAnchor: [30, 30]
+            iconSize: [80, 80],
+            iconAnchor: [40, 40]
         });
         ownShipMarker.setIcon(rotatedIcon);
         
@@ -137,20 +139,21 @@ function updateCameraDirection(pan) {
             className: 'ship-marker own-ship-icon',
             html: `
                 <div class="ship-with-camera">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" 
+                    <svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg" 
                          class="ship-icon-svg" style="transform: rotate(${course}deg); transform-origin: center;">
-                        <path d="M20 5L25 15L20 20L15 15L20 5Z" fill="#e94560"/>
-                        <circle cx="20" cy="20" r="15" stroke="#e94560" stroke-width="2" fill="rgba(233,69,96,0.2)"/>
+                        <path d="M25 5L32 20L25 28L18 20L25 5Z" fill="#e94560"/>
+                        <circle cx="25" cy="28" r="18" stroke="#e94560" stroke-width="2.5" fill="rgba(233,69,96,0.2)"/>
                     </svg>
                     <div class="camera-direction-indicator" 
                          style="transform: rotate(${course + pan}deg);">
                         <div class="camera-beam"></div>
                         <div class="camera-dot"></div>
+                        <div class="camera-arrow"></div>
                     </div>
                 </div>
             `,
-            iconSize: [60, 60],
-            iconAnchor: [30, 30]
+            iconSize: [80, 80],
+            iconAnchor: [40, 40]
         });
         ownShipMarker.setIcon(rotatedIcon);
         

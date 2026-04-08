@@ -292,48 +292,75 @@ body {
 /* Camera indicator on ship marker */
 .ship-with-camera {
     position: relative;
-    width: 60px;
-    height: 60px;
+    width: 80px;
+    height: 80px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
+.ship-icon-svg {
+    transition: transform 0.3s ease;
+    transform-origin: center;
+    z-index: 1;
+}
+
 .camera-direction-indicator {
     position: absolute;
-    width: 50px;
-    height: 50px;
+    width: 70px;
+    height: 70px;
     pointer-events: none;
-    transition: transform 0.2s ease;
+    transition: transform 0.15s ease-out;
+    z-index: 100;
+    transform-origin: center;
 }
 
 .camera-beam {
     position: absolute;
-    width: 40px;
-    height: 40px;
+    width: 60px;
+    height: 60px;
     top: 5px;
     left: 5px;
     background: conic-gradient(
-        from -15deg,
-        rgba(74, 222, 128, 0.7) 0deg,
-        rgba(74, 222, 128, 0.4) 15deg,
-        transparent 30deg
+        from -20deg,
+        rgba(74, 222, 128, 0.8) 0deg,
+        rgba(74, 222, 128, 0.5) 20deg,
+        rgba(74, 222, 128, 0.2) 40deg,
+        transparent 60deg
     );
     border-radius: 50%;
-    transform-origin: center bottom;
-    transform: rotate(180deg);
+    transform-origin: center;
+    box-shadow: 0 0 10px rgba(74, 222, 128, 0.6);
+    z-index: 5;
+    opacity: 0.85;
 }
 
 .camera-dot {
     position: absolute;
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
     background: #fbbf24;
     border-radius: 50%;
-    top: 0;
+    top: 8px;
     left: 50%;
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 6px #fbbf24;
+    box-shadow: 0 0 8px #fbbf24, 0 0 15px rgba(251, 191, 36, 0.5);
+    z-index: 20;
+}
+
+/* Add a direction arrow for better visibility */
+.camera-arrow {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 18px solid #fbbf24;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    filter: drop-shadow(0 0 3px #fbbf24);
+    z-index: 30;
 }
 
 /* Responsive Design */
