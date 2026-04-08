@@ -37,7 +37,7 @@ TOPIC_PTZ_COMMAND = "control/ptz/command"
 TOPIC_SIMULATION_COMMAND = "control/simulation/command"
 
 # Настройки эмуляции
-UPDATE_INTERVAL = float(os.getenv("UPDATE_INTERVAL", "1.0"))
+#UPDATE_INTERVAL = float(os.getenv("UPDATE_INTERVAL", "0.02"))
 RADAR_RANGE_NM = float(os.getenv("RADAR_RANGE_NM", "12.0"))
 DEFAULT_TIMESCALE = float(os.getenv("DEFAULT_TIMESCALE", "1.0"))
 
@@ -57,7 +57,8 @@ camera_state = {
     "target_tilt": 0.0
 }
 last_radar_update = 0
-
+last_world_update = 0
+WORLD_STATE_HZ = 10.0  # ← 5 Гц для веб-панели
 
 def on_connect(client, userdata, flags, rc):
     """Callback при подключении к MQTT"""
@@ -178,7 +179,7 @@ def update_ship_positions(dt):
     
     # Обновление целей
     for target in moving_targets:
-        target.update(dt * time_scale)
+        target.update(dt)
 
 
 def get_radar_targets():
@@ -251,10 +252,12 @@ def publish_world_state(radar_targets):
     for mt in moving_targets:
         all_targets.append({
             "id": mt.id,
-            "lat": round(mt.position.lat, 6),
-            "lon": round(mt.position.lon, 6),
             "course": mt.course,
-            "speed": mt.speed
+            "speed": mt.speed,
+            "absolute_position": {  # ← Добавили вложенный объект!
+                "lat": round(mt.position.lat, 6),
+                "lon": round(mt.position.lon, 6)
+            }
         })
     
     data = {
@@ -325,7 +328,7 @@ def update_camera(dt):
 
 def main():
     """Главный цикл симуляции"""
-    global connected, client, simulation_running, own_ship, time_scale, last_radar_update
+    global connected, client, simulation_running, own_ship, time_scale, last_radar_update, last_world_update, WORLD_STATE_HZ
     
     print("=" * 60)
     print("🚢 MarineNav Sensor Bridge")
@@ -377,7 +380,12 @@ def main():
                     publish_radar_targets(radar_targets)
                     publish_world_state(radar_targets)
                     last_radar_update = current_time
-                
+
+                    # World State (5 Гц) - только для веб-панели!
+                if current_time - last_world_update >= (1.0 / WORLD_STATE_HZ):
+                    publish_world_state(get_radar_targets())
+                    last_world_update = current_time
+
                 # Обновление камеры
                 update_camera(dt)
                 publish_camera_status()
@@ -388,7 +396,8 @@ def main():
                       f"Целей={len(moving_targets)} (видим={len(get_radar_targets())}) | "
                       f"Time={time_scale}x", end="", flush=True)
             
-            time.sleep(UPDATE_INTERVAL)
+            #time.sleep(UPDATE_INTERVAL)
+            time.sleep(0.01)
             
     except KeyboardInterrupt:
         print("\n\n👋 Остановка по команде пользователя...")

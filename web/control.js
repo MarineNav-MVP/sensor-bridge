@@ -2,7 +2,7 @@
 
 // MQTT Configuration
 const MQTT_HOST = 'localhost';
-const MQTT_PORT = 9001; // WebSocket port for MQTT
+const MQTT_PORT = 8081; // WebSocket port for MQTT
 const MQTT_CLIENT_ID = 'web-dashboard-' + Math.random().toString(16).substr(2, 8);
 
 // MQTT Topics
