@@ -25,6 +25,10 @@ let cameraState = {
     moving: false
 };
 
+// Debounce timer for PTZ commands
+let ptzDebounceTimer = null;
+const PTZ_DEBOUNCE_DELAY = 150; // ms
+
 /**
  * Initialize MQTT client
  */
@@ -204,6 +208,27 @@ function handleCameraStatus(data) {
     
     // Update camera display
     updateCameraDisplay();
+    
+    // Update slider positions to match received state
+    const panSlider = document.getElementById('cameraPanSlider');
+    const tiltSlider = document.getElementById('cameraTiltSlider');
+    const zoomSlider = document.getElementById('cameraZoomSlider');
+    
+    if (panSlider) {
+        panSlider.value = cameraState.pan;
+        document.getElementById('panValue').textContent = `${cameraState.pan}°`;
+    }
+    if (tiltSlider) {
+        tiltSlider.value = cameraState.tilt;
+        document.getElementById('tiltValue').textContent = `${cameraState.tilt}°`;
+    }
+    if (zoomSlider) {
+        zoomSlider.value = cameraState.zoom;
+        document.getElementById('zoomValue').textContent = `${cameraState.zoom}x`;
+    }
+    
+    // Update visualization on map
+    updateCameraVisualization();
 }
 
 /**
@@ -256,12 +281,14 @@ function sendSimulationCommand(action, scenario = null, timescale = null) {
 }
 
 /**
- * Send PTZ camera command
+ * Send PTZ camera command with debouncing
  */
 function sendPTZCommand(pan, tilt, zoom, speed = 50, mode = 'absolute') {
     if (!mqttClient || !isConnected) {
         console.error('❌ Not connected to MQTT');
-        alert('Not connected to MQTT broker');
+        // Still update local state even if not connected
+        cameraState = { pan, tilt, zoom, moving: false };
+        updateCameraDisplay();
         return;
     }
     
@@ -278,6 +305,26 @@ function sendPTZCommand(pan, tilt, zoom, speed = 50, mode = 'absolute') {
     
     console.log('📤 Sending PTZ command:', command);
     mqttClient.send(message);
+}
+
+/**
+ * Send PTZ command with debouncing (for slider input)
+ */
+function sendPTZCommandDebounced(pan, tilt, zoom) {
+    // Clear existing timer
+    if (ptzDebounceTimer) {
+        clearTimeout(ptzDebounceTimer);
+    }
+    
+    // Update local state immediately for responsive UI
+    cameraState = { pan, tilt, zoom, moving: false };
+    updateCameraDisplay();
+    updateCameraVisualization();
+    
+    // Send MQTT command after debounce delay
+    ptzDebounceTimer = setTimeout(() => {
+        sendPTZCommand(pan, tilt, zoom);
+    }, PTZ_DEBOUNCE_DELAY);
 }
 
 /**
@@ -340,6 +387,15 @@ function updateCameraDisplay() {
 }
 
 /**
+ * Update camera visualization on map (ship marker)
+ */
+function updateCameraVisualization() {
+    if (window.MapManager && typeof window.MapManager.updateCameraDirection === 'function') {
+        window.MapManager.updateCameraDirection(cameraState.pan);
+    }
+}
+
+/**
  * Setup event listeners
  */
 function setupEventListeners() {
@@ -382,14 +438,31 @@ function setupEventListeners() {
         });
     }
     
-    // Camera move button
-    const btnCameraMove = document.getElementById('btnCameraMove');
-    if (btnCameraMove) {
-        btnCameraMove.addEventListener('click', () => {
-            const pan = parseFloat(document.getElementById('cameraPanSlider').value);
-            const tilt = parseFloat(document.getElementById('cameraTiltSlider').value);
-            const zoom = parseInt(document.getElementById('cameraZoomSelect').value);
-            sendPTZCommand(pan, tilt, zoom);
+    // Camera PTZ sliders - instant response with debouncing
+    const cameraPanSlider = document.getElementById('cameraPanSlider');
+    if (cameraPanSlider) {
+        cameraPanSlider.addEventListener('input', (e) => {
+            const pan = parseFloat(e.target.value);
+            document.getElementById('panValue').textContent = `${pan}°`;
+            sendPTZCommandDebounced(pan, cameraState.tilt, cameraState.zoom);
+        });
+    }
+    
+    const cameraTiltSlider = document.getElementById('cameraTiltSlider');
+    if (cameraTiltSlider) {
+        cameraTiltSlider.addEventListener('input', (e) => {
+            const tilt = parseFloat(e.target.value);
+            document.getElementById('tiltValue').textContent = `${tilt}°`;
+            sendPTZCommandDebounced(cameraState.pan, tilt, cameraState.zoom);
+        });
+    }
+    
+    const cameraZoomSlider = document.getElementById('cameraZoomSlider');
+    if (cameraZoomSlider) {
+        cameraZoomSlider.addEventListener('input', (e) => {
+            const zoom = parseInt(e.target.value);
+            document.getElementById('zoomValue').textContent = `${zoom}x`;
+            sendPTZCommandDebounced(cameraState.pan, cameraState.tilt, zoom);
         });
     }
 }

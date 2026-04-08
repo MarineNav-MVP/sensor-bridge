@@ -197,6 +197,35 @@ body {
     font-weight: 600;
 }
 
+/* Compass Rose for Pan Control */
+.compass-rose {
+    position: relative;
+    width: 100%;
+    height: 30px;
+    margin-top: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 5px;
+}
+
+.compass-point {
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: #e94560;
+}
+
+.compass-point.n { color: #ff6b6b; }
+.compass-point.e { color: #4ade80; }
+.compass-point.s { color: #fbbf24; }
+.compass-point.w { color: #60a5fa; }
+
+/* Zoom Slider Value Display */
+#zoomValue, #panValue, #tiltValue {
+    color: #4ade80;
+    font-weight: 600;
+}
+
 /* Statistics */
 .statistics {
     background-color: #0f3460;
@@ -247,6 +276,7 @@ body {
     background-color: #16213e;
 }
 
+/* Ship markers with camera indicator */
 .ship-marker {
     transition: all 0.3s ease;
 }
@@ -257,6 +287,53 @@ body {
 
 .target-ship-icon {
     filter: drop-shadow(0 0 4px #4ade80);
+}
+
+/* Camera indicator on ship marker */
+.ship-with-camera {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.camera-direction-indicator {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    pointer-events: none;
+    transition: transform 0.2s ease;
+}
+
+.camera-beam {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    top: 5px;
+    left: 5px;
+    background: conic-gradient(
+        from -15deg,
+        rgba(74, 222, 128, 0.7) 0deg,
+        rgba(74, 222, 128, 0.4) 15deg,
+        transparent 30deg
+    );
+    border-radius: 50%;
+    transform-origin: center bottom;
+    transform: rotate(180deg);
+}
+
+.camera-dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #fbbf24;
+    border-radius: 50%;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 6px #fbbf24;
 }
 
 /* Responsive Design */

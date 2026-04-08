@@ -5,18 +5,26 @@ let map = null;
 let ownShipMarker = null;
 let targetMarkers = {};
 let ownShipPosition = null;
+let currentCameraPan = 0; // Camera pan relative to ship heading
+let currentShipCourse = 0; // Ship's current course
 
-// Ship icons (custom SVG markers)
+// Ship icons (custom SVG markers with camera indicator)
 const ownShipIcon = L.divIcon({
     className: 'ship-marker own-ship-icon',
     html: `
-        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M20 5L25 15L20 20L15 15L20 5Z" fill="#e94560"/>
-            <circle cx="20" cy="20" r="15" stroke="#e94560" stroke-width="2" fill="rgba(233,69,96,0.2)"/>
-        </svg>
+        <div class="ship-with-camera">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="ship-icon-svg">
+                <path d="M20 5L25 15L20 20L15 15L20 5Z" fill="#e94560"/>
+                <circle cx="20" cy="20" r="15" stroke="#e94560" stroke-width="2" fill="rgba(233,69,96,0.2)"/>
+            </svg>
+            <div class="camera-direction-indicator">
+                <div class="camera-beam"></div>
+                <div class="camera-dot"></div>
+            </div>
+        </div>
     `,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20]
+    iconSize: [60, 60],
+    iconAnchor: [30, 30]
 });
 
 const targetShipIcon = L.divIcon({
@@ -60,22 +68,31 @@ function updateOwnShip(data) {
     const speed = parseFloat(data.speed) || 0;
     
     ownShipPosition = { lat, lon, course, speed };
+    currentShipCourse = course; // Store current course
     
     if (ownShipMarker) {
         // Update existing marker position
         ownShipMarker.setLatLng([lat, lon]);
         
-        // Rotate icon based on course
+        // Rotate ship icon based on course, camera indicator based on course + pan
         const rotatedIcon = L.divIcon({
             className: 'ship-marker own-ship-icon',
             html: `
-                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="transform: rotate(${course}deg)">
-                    <path d="M20 5L25 15L20 20L15 15L20 5Z" fill="#e94560"/>
-                    <circle cx="20" cy="20" r="15" stroke="#e94560" stroke-width="2" fill="rgba(233,69,96,0.2)"/>
-                </svg>
+                <div class="ship-with-camera">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" 
+                         class="ship-icon-svg" style="transform: rotate(${course}deg); transform-origin: center;">
+                        <path d="M20 5L25 15L20 20L15 15L20 5Z" fill="#e94560"/>
+                        <circle cx="20" cy="20" r="15" stroke="#e94560" stroke-width="2" fill="rgba(233,69,96,0.2)"/>
+                    </svg>
+                    <div class="camera-direction-indicator" 
+                         style="transform: rotate(${course + currentCameraPan}deg);">
+                        <div class="camera-beam"></div>
+                        <div class="camera-dot"></div>
+                    </div>
+                </div>
             `,
-            iconSize: [40, 40],
-            iconAnchor: [20, 20]
+            iconSize: [60, 60],
+            iconAnchor: [30, 30]
         });
         ownShipMarker.setIcon(rotatedIcon);
         
@@ -85,15 +102,17 @@ function updateOwnShip(data) {
             Course: ${course.toFixed(1)}°<br>
             Speed: ${speed.toFixed(1)} kn<br>
             Lat: ${lat.toFixed(6)}<br>
-            Lon: ${lon.toFixed(6)}
+            Lon: ${lon.toFixed(6)}<br>
+            Camera Pan: ${currentCameraPan.toFixed(1)}°
         `);
     } else {
-        // Create new marker
+        // Create new marker with camera indicator
         ownShipMarker = L.marker([lat, lon], { icon: ownShipIcon }).addTo(map);
         ownShipMarker.bindPopup(`
             <strong>🚢 Own Ship</strong><br>
             Course: ${course.toFixed(1)}°<br>
-            Speed: ${speed.toFixed(1)} kn
+            Speed: ${speed.toFixed(1)} kn<br>
+            Camera Pan: ${currentCameraPan.toFixed(1)}°
         `);
         
         // Center map on own ship
@@ -101,6 +120,52 @@ function updateOwnShip(data) {
     }
     
     console.log(`📍 Own ship updated: ${lat.toFixed(6)}, ${lon.toFixed(6)}`);
+}
+
+/**
+ * Update camera direction on ship marker
+ * @param {number} pan - Camera pan angle (-180 to 180)
+ */
+function updateCameraDirection(pan) {
+    currentCameraPan = pan;
+    
+    if (ownShipMarker && ownShipPosition) {
+        const course = currentShipCourse;
+        
+        // Update marker icon with new camera direction
+        const rotatedIcon = L.divIcon({
+            className: 'ship-marker own-ship-icon',
+            html: `
+                <div class="ship-with-camera">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" 
+                         class="ship-icon-svg" style="transform: rotate(${course}deg); transform-origin: center;">
+                        <path d="M20 5L25 15L20 20L15 15L20 5Z" fill="#e94560"/>
+                        <circle cx="20" cy="20" r="15" stroke="#e94560" stroke-width="2" fill="rgba(233,69,96,0.2)"/>
+                    </svg>
+                    <div class="camera-direction-indicator" 
+                         style="transform: rotate(${course + pan}deg);">
+                        <div class="camera-beam"></div>
+                        <div class="camera-dot"></div>
+                    </div>
+                </div>
+            `,
+            iconSize: [60, 60],
+            iconAnchor: [30, 30]
+        });
+        ownShipMarker.setIcon(rotatedIcon);
+        
+        // Update popup if open
+        if (ownShipMarker.isPopupOpen()) {
+            ownShipMarker.setPopupContent(`
+                <strong>🚢 Own Ship</strong><br>
+                Course: ${course.toFixed(1)}°<br>
+                Speed: ${(ownShipPosition.speed || 0).toFixed(1)} kn<br>
+                Lat: ${ownShipPosition.lat.toFixed(6)}<br>
+                Lon: ${ownShipPosition.lon.toFixed(6)}<br>
+                Camera Pan: ${pan.toFixed(1)}°
+            `);
+        }
+    }
 }
 
 /**
@@ -221,5 +286,6 @@ window.MapManager = {
     updateOwnShip,
     updateTargets,
     clearTargets,
-    fitMapToShips
+    fitMapToShips,
+    updateCameraDirection
 };

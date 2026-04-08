@@ -75,26 +75,25 @@
                     </div>
                     
                     <div class="control-group">
-                        <label for="cameraPanSlider">Pan:</label>
+                        <label for="cameraPanSlider">Pan: <span id="panValue">0°</span></label>
                         <input type="range" id="cameraPanSlider" min="-180" max="180" value="0">
+                        <div class="compass-rose">
+                            <span class="compass-point n">N</span>
+                            <span class="compass-point e">E</span>
+                            <span class="compass-point s">S</span>
+                            <span class="compass-point w">W</span>
+                        </div>
                     </div>
                     
                     <div class="control-group">
-                        <label for="cameraTiltSlider">Tilt:</label>
+                        <label for="cameraTiltSlider">Tilt: <span id="tiltValue">0°</span></label>
                         <input type="range" id="cameraTiltSlider" min="-30" max="30" value="0">
                     </div>
                     
                     <div class="control-group">
-                        <label for="cameraZoomSelect">Zoom:</label>
-                        <select id="cameraZoomSelect">
-                            <option value="1">1x</option>
-                            <option value="2">2x</option>
-                            <option value="5">5x</option>
-                            <option value="10">10x</option>
-                        </select>
+                        <label for="cameraZoomSlider">Zoom: <span id="zoomValue">1x</span></label>
+                        <input type="range" id="cameraZoomSlider" min="1" max="10" value="1" step="1">
                     </div>
-                    
-                    <button id="btnCameraMove" class="btn btn-primary">Move Camera</button>
                 </div>
 
                 <!-- Statistics -->
