@@ -1,7 +1,7 @@
 """
 FusionCore Integration Stub
 
-Пример заглушки для разработчика FusionCore (Леонид).
+Пример заглушки для разработчика FusionCore.
 
 Этот файл демонстрирует:
 1. Как подключиться к MQTT брокеру Sensor Bridge
