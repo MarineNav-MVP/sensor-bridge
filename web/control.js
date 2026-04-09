@@ -411,13 +411,12 @@ function updateCircularSlider(pan) {
         const circumference = 502.65;
         // Map pan (-180 to 180) to arc portion (0 to full circle)
         const panNormalized = pan + 180; // 0 to 360
-        const arcLength = (panNormalized / 360) * circumference;
-        const offset = circumference - arcLength;
-        activeArc.setAttribute('stroke-dashoffset', offset);
+        const portion = panNormalized / 360; // 0 to 1
+        const arcLength = portion * circumference;
         
-        // Ensure the arc starts from the top (North position)
-        activeArc.style.transform = 'rotate(-90deg)';
-        activeArc.style.transformOrigin = '100px 100px';
+        // Set stroke-dasharray and stroke-dashoffset for the arc
+        activeArc.setAttribute('stroke-dasharray', `${arcLength} ${circumference}`);
+        activeArc.setAttribute('stroke-dashoffset', '0');
     }
 }
 

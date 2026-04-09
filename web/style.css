@@ -234,9 +234,7 @@ body {
     stroke: #e94560;
     stroke-width: 12;
     stroke-linecap: round;
-    transform: rotate(-90deg);
-    transform-origin: 100px 100px;
-    transition: stroke-dashoffset 0.1s ease-out;
+    transition: stroke-dasharray 0.05s ease-out, stroke-dashoffset 0.05s ease-out;
 }
 
 /* Slider Indicator (rotates) */
