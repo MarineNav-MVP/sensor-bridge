@@ -1,54 +1,45 @@
-# main.py - Sensor Bridge для морского эмулятора MarineNav
-# Модуль эмулирует сенсоры судна и публикует данные в MQTT
+# main.py - Sensor Bridge for MarineNav maritime emulator
+# Module emulates ship sensors and publishes data to MQTT
 
+import logging
+import signal
 import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-
 import time
-import json
-import random
-import math
 from datetime import datetime, timezone
-from dotenv import load_dotenv
-import paho.mqtt.client as mqtt
+from typing import Any, Dict, List, Optional
 
-# Импорт наших модулей
-from core.ship_state import ShipState, Position, Controls, RadarTarget
+import paho.mqtt.client as mqtt
+from dotenv import load_dotenv
+
+# Import our modules
+from core.config import settings, get_mqtt_topics
+from core.ship_state import ShipState, Position, RadarTarget
 from core.ship_dynamics import ShipDynamics, ShipParameters, Environment
 from sensors.gps_emulator import GPSEmulator
 from sensors.radar_emulator import RadarEmulator
 from scenarios.loader import load_scenario, create_moving_targets, MovingTarget
 
-# Загружаем настройки из .env
+# Load environment variables from .env file
 load_dotenv()
 
-# === КОНФИГУРАЦИЯ ===
-MQTT_HOST = os.getenv("MQTT_HOST", "localhost")
-MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
-MQTT_CLIENT_ID = os.getenv("MQTT_CLIENT_ID", "sensor-bridge")
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-# Топики MQTT (ровно 6 штук по спецификации)
-TOPIC_NMEA_RAW = "sensors/nmea/raw"
-TOPIC_RADAR_TARGETS = "sensors/radar/targets"
-TOPIC_WORLD_STATE = "sensors/world_state"
-TOPIC_CAMERA_STATUS = "camera/status"
-TOPIC_PTZ_COMMAND = "control/ptz/command"
-TOPIC_SIMULATION_COMMAND = "control/simulation/command"
+# Get MQTT topics
+TOPICS = get_mqtt_topics()
 
-# Настройки эмуляции
-#UPDATE_INTERVAL = float(os.getenv("UPDATE_INTERVAL", "0.02"))
-RADAR_RANGE_NM = float(os.getenv("RADAR_RANGE_NM", "12.0"))
-DEFAULT_TIMESCALE = float(os.getenv("DEFAULT_TIMESCALE", "1.0"))
-
-# Глобальное состояние
-connected = False
-client = None
-simulation_running = False
-time_scale = DEFAULT_TIMESCALE
-own_ship = None
-moving_targets = []
-camera_state = {
+# Global state
+connected: bool = False
+client: Optional[mqtt.Client] = None
+simulation_running: bool = False
+time_scale: float = settings.default_timescale
+own_ship: Optional[ShipState] = None
+moving_targets: List[MovingTarget] = []
+camera_state: Dict[str, Any] = {
     "pan": 0.0,
     "tilt": 0.0,
     "zoom": 1,
@@ -56,64 +47,87 @@ camera_state = {
     "target_pan": 0.0,
     "target_tilt": 0.0
 }
-last_radar_update = 0
-last_world_update = 0
-WORLD_STATE_HZ = 10.0  # ← 5 Гц для веб-панели
+last_radar_update: float = 0
+last_world_update: float = 0
+WORLD_STATE_HZ: float = settings.world_state_hz
 
-def on_connect(client, userdata, flags, rc):
-    """Callback при подключении к MQTT"""
+
+def on_connect(client: mqtt.Client, userdata: Any, flags: Dict, rc: int) -> None:
+    """Callback when connected to MQTT broker.
+    
+    Args:
+        client: MQTT client instance
+        userdata: User data (unused)
+        flags: Connection flags
+        rc: Return code (0 = success)
+    """
     global connected
     if rc == 0:
-        print(f"✅ Подключено к MQTT брокеру {MQTT_HOST}:{MQTT_PORT}")
+        logger.info("Connected to MQTT broker %s:%d", settings.mqtt_host, settings.mqtt_port)
         connected = True
-        # Подписка на команды
-        client.subscribe(TOPIC_PTZ_COMMAND)
-        client.subscribe(TOPIC_SIMULATION_COMMAND)
-        print(f"📡 Подписка на {TOPIC_PTZ_COMMAND} и {TOPIC_SIMULATION_COMMAND}")
+        # Subscribe to command topics
+        client.subscribe(TOPICS["PTZ_COMMAND"])
+        client.subscribe(TOPICS["SIMULATION_COMMAND"])
+        logger.info("Subscribed to %s and %s", TOPICS["PTZ_COMMAND"], TOPICS["SIMULATION_COMMAND"])
     else:
-        print(f"❌ Ошибка подключения. Код: {rc}")
+        logger.error("Connection failed. Return code: %d", rc)
         connected = False
 
 
-def on_message(client, userdata, msg):
-    """Callback при получении сообщения"""
+def on_message(client: mqtt.Client, userdata: Any, msg: mqtt.MQTTMessage) -> None:
+    """Callback when message received on subscribed topic.
+    
+    Args:
+        client: MQTT client instance
+        userdata: User data (unused)
+        msg: MQTT message object
+    """
     global simulation_running, time_scale, camera_state
     
     try:
-        payload = json.loads(msg.payload.decode())
+        payload = msg.payload.decode('utf-8')
+        data = __import__('json').loads(payload)
         
-        if msg.topic == TOPIC_SIMULATION_COMMAND:
-            handle_simulation_command(payload)
-        elif msg.topic == TOPIC_PTZ_COMMAND:
-            handle_ptz_command(payload)
+        if msg.topic == TOPICS["SIMULATION_COMMAND"]:
+            handle_simulation_command(data)
+        elif msg.topic == TOPICS["PTZ_COMMAND"]:
+            handle_ptz_command(data)
     except Exception as e:
-        print(f"❌ Ошибка обработки сообщения: {e}")
+        logger.error("Error processing message: %s", e)
 
 
-def handle_simulation_command(cmd):
-    """Обработка команд симуляции"""
+def handle_simulation_command(cmd: Dict[str, Any]) -> None:
+    """Handle simulation control commands.
+    
+    Args:
+        cmd: Command dictionary with action and parameters
+    """
     global simulation_running, time_scale, own_ship, moving_targets
     
     action = cmd.get("action", "")
     
     if action == "start":
         scenario_name = cmd.get("scenario", "crossing_starboard")
-        time_scale = cmd.get("timescale", DEFAULT_TIMESCALE)
+        time_scale = cmd.get("timescale", settings.default_timescale)
         start_simulation(scenario_name)
     elif action == "stop":
         simulation_running = False
-        print("⏹ Симуляция остановлена")
+        logger.info("Simulation stopped")
     elif action == "timescale":
-        time_scale = float(cmd.get("value", DEFAULT_TIMESCALE))
-        print(f"⏩ Time scale: {time_scale}x")
+        time_scale = float(cmd.get("value", settings.default_timescale))
+        logger.info("Time scale: %dx", time_scale)
     elif action == "restart":
         scenario_name = cmd.get("scenario", "crossing_starboard")
-        time_scale = cmd.get("timescale", DEFAULT_TIMESCALE)
+        time_scale = cmd.get("timescale", settings.default_timescale)
         start_simulation(scenario_name)
 
 
-def handle_ptz_command(cmd):
-    """Обработка команд PTZ камеры"""
+def handle_ptz_command(cmd: Dict[str, Any]) -> None:
+    """Handle PTZ camera control commands.
+    
+    Args:
+        cmd: Command dictionary with pan, tilt, zoom parameters
+    """
     global camera_state
     
     mode = cmd.get("mode", "absolute")
@@ -125,23 +139,29 @@ def handle_ptz_command(cmd):
         camera_state["target_tilt"] = float(cmd.get("tilt", camera_state["tilt"]))
         camera_state["zoom"] = int(cmd.get("zoom", camera_state["zoom"]))
         camera_state["moving"] = True
-        print(f"📷 Камера: pan={camera_state['target_pan']}°, tilt={camera_state['target_tilt']}°, zoom={camera_state['zoom']}x")
+        logger.info("Camera: pan=%.1f°, tilt=%.1f°, zoom=%dx", 
+                   camera_state['target_pan'], camera_state['target_tilt'], camera_state['zoom'])
 
 
-def start_simulation(scenario_name):
-    """Запуск сценария симуляции"""
+def start_simulation(scenario_name: str) -> None:
+    """Start a simulation scenario.
+    
+    Args:
+        scenario_name: Name of the scenario file (without .json extension)
+    """
     global simulation_running, own_ship, moving_targets
     
     try:
         scenario_path = f"scenarios/{scenario_name}.json"
         scenario = load_scenario(scenario_path)
         
-        # Создаём наше судно из сценария
+        # Create own ship from scenario data
         own_data = scenario.get("own_ship", {})
+        start_pos = own_data.get("start", {})
         own_ship = ShipState(
             position=Position(
-                lat=float(own_data.get("start", {}).get("lat", 55.751244)),
-                lon=float(own_data.get("start", {}).get("lon", 37.618423))
+                lat=float(start_pos.get("lat", 55.751244)),
+                lon=float(start_pos.get("lon", 37.618423))
             ),
             course=float(own_data.get("course", 0)),
             speed=float(own_data.get("speed", 10)),
@@ -150,24 +170,28 @@ def start_simulation(scenario_name):
             timestamp=time.time()
         )
         
-        # Создаём движущиеся цели
+        # Create moving targets
         moving_targets = create_moving_targets(scenario)
         
         simulation_running = True
-        print(f"🚀 Запущен сценарий: {scenario_name} ({len(moving_targets)} целей)")
+        logger.info("Started scenario: %s (%d targets)", scenario_name, len(moving_targets))
         
     except Exception as e:
-        print(f"❌ Ошибка запуска сценария: {e}")
+        logger.error("Error starting scenario: %s", e)
         simulation_running = False
 
 
-def update_ship_positions(dt):
-    """Обновление позиций всех судов"""
+def update_ship_positions(dt: float) -> None:
+    """Update positions of all ships.
+    
+    Args:
+        dt: Delta time in seconds
+    """
     global own_ship, moving_targets
     
     if own_ship:
-        # Движение нашего судна по прямой
-        distance_nm = own_ship.speed * (dt / 3600)  # мили
+        # Move own ship in straight line
+        distance_nm = own_ship.speed * (dt / 3600)  # nautical miles
         course_rad = math.radians(own_ship.course)
         
         delta_lat = (distance_nm * math.cos(course_rad)) / 60
@@ -177,13 +201,17 @@ def update_ship_positions(dt):
         own_ship.position.lon += delta_lon
         own_ship.timestamp = time.time()
     
-    # Обновление целей
+    # Update targets
     for target in moving_targets:
         target.update(dt)
 
 
-def get_radar_targets():
-    """Получение целей радара (в пределах 12 миль)"""
+def get_radar_targets() -> List[Dict[str, Any]]:
+    """Get radar targets within range.
+    
+    Returns:
+        List of radar target dictionaries
+    """
     global own_ship, moving_targets
     
     targets = []
@@ -191,8 +219,8 @@ def get_radar_targets():
     for mt in moving_targets:
         distance = own_ship.position.distance_to(mt.position)
         
-        # Фильтр: только цели в радиусе 12 миль
-        if distance <= RADAR_RANGE_NM:
+        # Filter: only targets within RADAR_RANGE_NM
+        if distance <= settings.radar_range_nm:
             bearing = own_ship.position.bearing_to(mt.position)
             relative_bearing = (bearing - own_ship.course + 360) % 360
             
