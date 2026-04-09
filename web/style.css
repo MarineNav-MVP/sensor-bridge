@@ -209,6 +209,7 @@ body {
     justify-content: center;
     align-items: center;
     margin: 15px 0;
+    position: relative;
 }
 
 /* Circular Slider SVG */
@@ -217,6 +218,7 @@ body {
     height: 200px;
     cursor: pointer;
     user-select: none;
+    overflow: visible;
 }
 
 /* Slider Track */
@@ -240,7 +242,8 @@ body {
 /* Slider Indicator (rotates) */
 .slider-indicator {
     cursor: pointer;
-    transition: transform 0.1s ease-out;
+    transition: transform 0.05s ease-out;
+    pointer-events: none;
 }
 
 .slider-indicator line {
@@ -253,13 +256,15 @@ body {
 
 /* Compass Labels */
 .compass-label {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: bold;
     fill: #aaa;
     pointer-events: none;
+    text-anchor: middle;
+    dominant-baseline: middle;
 }
 
-.compass-label.n { fill: #ff6b6b; }
+.compass-label.n { fill: #ff6b6b; font-size: 18px; }
 .compass-label.e { fill: #4ade80; }
 .compass-label.s { fill: #fbbf24; }
 .compass-label.w { fill: #60a5fa; }

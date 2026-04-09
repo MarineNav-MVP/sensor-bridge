@@ -14,14 +14,12 @@ venv/
 node_modules/
 .julia/
 .zig-cache/
-zig-cache/
 
 # Logs and temp files
 *.log
 *.tmp
 *.swp
 *.swo
-*.out
 
 # Environment
 .env
@@ -43,13 +41,15 @@ coverage/
 htmlcov/
 .coverage
 
-# Package management
-.npm/
-.yarn/
-.pnpm-store/
-.mypy_cache/
-.pytest_cache/
-.gradle/
+# Python specific
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg-info/
+.eggs/
 
 # Compressed files
 *.zip

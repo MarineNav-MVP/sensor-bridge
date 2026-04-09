@@ -414,6 +414,10 @@ function updateCircularSlider(pan) {
         const arcLength = (panNormalized / 360) * circumference;
         const offset = circumference - arcLength;
         activeArc.setAttribute('stroke-dashoffset', offset);
+        
+        // Ensure the arc starts from the top (North position)
+        activeArc.style.transform = 'rotate(-90deg)';
+        activeArc.style.transformOrigin = '100px 100px';
     }
 }
 
@@ -451,6 +455,10 @@ function initCircularSlider() {
     const hiddenSlider = document.getElementById('cameraPanSlider');
     
     if (!slider || !hiddenSlider) return;
+    
+    // Prevent double initialization
+    if (slider.dataset.initialized === 'true') return;
+    slider.dataset.initialized = 'true';
     
     // Mouse down / touch start
     const startDrag = (e) => {
