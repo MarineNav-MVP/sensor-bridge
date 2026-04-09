@@ -28,6 +28,8 @@ let cameraState = {
 // Circular slider state
 let isDraggingSlider = false;
 let currentPanAngle = 0;
+let previousPointerAngle = null;
+let cumulativePanAngle = 0; // Continuous angle without normalization
 
 // Debounce timer for PTZ commands
 let ptzDebounceTimer = null;
@@ -230,6 +232,9 @@ function handleCameraStatus(data) {
         zoomSlider.value = cameraState.zoom;
         document.getElementById('zoomValue').textContent = `${cameraState.zoom}x`;
     }
+    
+    // Update cumulative angle for circular slider (sync with camera state)
+    cumulativePanAngle = cameraState.pan;
     
     // Update circular slider visual
     updateCircularSlider(cameraState.pan);
@@ -459,14 +464,19 @@ function initCircularSlider() {
     if (slider.dataset.initialized === 'true') return;
     slider.dataset.initialized = 'true';
     
+    // Initialize cumulative angle from current pan value
+    cumulativePanAngle = parseFloat(hiddenSlider.value) || 0;
+    
     // Mouse down / touch start
     const startDrag = (e) => {
         e.preventDefault();
         isDraggingSlider = true;
         slider.style.cursor = 'grabbing';
         
-        const pan = getPositionAngle(e, slider);
-        updatePanFromCircular(pan);
+        // Get initial pointer angle
+        previousPointerAngle = getPositionAngle(e, slider);
+        
+        // Don't update pan yet, just record starting position
     };
     
     // Mouse move / touch move
@@ -474,8 +484,27 @@ function initCircularSlider() {
         if (!isDraggingSlider) return;
         e.preventDefault();
         
-        const pan = getPositionAngle(e, slider);
-        updatePanFromCircular(pan);
+        const currentPointerAngle = getPositionAngle(e, slider);
+        
+        if (previousPointerAngle !== null) {
+            // Calculate delta angle
+            let deltaAngle = currentPointerAngle - previousPointerAngle;
+            
+            // Handle wraparound at ±180° boundary for pointer angle
+            if (deltaAngle > 180) {
+                deltaAngle -= 360;
+            } else if (deltaAngle < -180) {
+                deltaAngle += 360;
+            }
+            
+            // Add delta to cumulative angle (continuous rotation)
+            cumulativePanAngle += deltaAngle;
+            
+            // Update display with normalized value
+            updatePanFromCircular(cumulativePanAngle);
+        }
+        
+        previousPointerAngle = currentPointerAngle;
     };
     
     // Mouse up / touch end
@@ -483,6 +512,7 @@ function initCircularSlider() {
         if (!isDraggingSlider) return;
         isDraggingSlider = false;
         slider.style.cursor = 'pointer';
+        previousPointerAngle = null;
     };
     
     // Event listeners for mouse
@@ -499,30 +529,31 @@ function initCircularSlider() {
 /**
  * Update pan value from circular slider interaction
  */
-function updatePanFromCircular(pan) {
+function updatePanFromCircular(cumulativePan) {
     // Round to nearest degree
-    pan = Math.round(pan);
+    let pan = Math.round(cumulativePan);
     
-    // Normalize to -180...180
-    while (pan > 180) pan -= 360;
-    while (pan < -180) pan += 360;
+    // Normalize to -180...180 for MQTT command and display
+    let normalizedPan = pan;
+    while (normalizedPan > 180) normalizedPan -= 360;
+    while (normalizedPan < -180) normalizedPan += 360;
     
-    currentPanAngle = pan;
+    currentPanAngle = normalizedPan;
     
-    // Update hidden slider value
+    // Update hidden slider value with normalized value
     const hiddenSlider = document.getElementById('cameraPanSlider');
     if (hiddenSlider) {
-        hiddenSlider.value = pan;
+        hiddenSlider.value = normalizedPan;
     }
     
-    // Update display
-    document.getElementById('panValue').textContent = `${pan}°`;
+    // Update display with normalized value
+    document.getElementById('panValue').textContent = `${normalizedPan}°`;
     
-    // Update visual
-    updateCircularSlider(pan);
+    // Update visual with normalized value
+    updateCircularSlider(normalizedPan);
     
-    // Send command with debouncing
-    sendPTZCommandDebounced(pan, cameraState.tilt, cameraState.zoom);
+    // Send command with debouncing (normalized value)
+    sendPTZCommandDebounced(normalizedPan, cameraState.tilt, cameraState.zoom);
 }
 
 /**
