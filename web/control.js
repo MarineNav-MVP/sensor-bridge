@@ -25,6 +25,10 @@ let cameraState = {
     moving: false
 };
 
+// Circular slider state
+let isDraggingSlider = false;
+let currentPanAngle = 0;
+
 // Debounce timer for PTZ commands
 let ptzDebounceTimer = null;
 const PTZ_DEBOUNCE_DELAY = 150; // ms
@@ -227,6 +231,9 @@ function handleCameraStatus(data) {
         document.getElementById('zoomValue').textContent = `${cameraState.zoom}x`;
     }
     
+    // Update circular slider visual
+    updateCircularSlider(cameraState.pan);
+    
     // Update visualization on map
     updateCameraVisualization();
 }
@@ -387,6 +394,139 @@ function updateCameraDisplay() {
 }
 
 /**
+ * Update circular slider visual
+ */
+function updateCircularSlider(pan) {
+    const indicator = document.querySelector('.slider-indicator');
+    const activeArc = document.querySelector('.slider-active');
+    
+    if (indicator) {
+        // Rotate indicator: 0° = up (N), positive = clockwise
+        indicator.setAttribute('transform', `rotate(${pan}, 100, 100)`);
+    }
+    
+    if (activeArc) {
+        // Calculate arc length to show from -180 to current pan
+        // Circumference = 2 * PI * 80 ≈ 502.65
+        const circumference = 502.65;
+        // Map pan (-180 to 180) to arc portion (0 to full circle)
+        const panNormalized = pan + 180; // 0 to 360
+        const arcLength = (panNormalized / 360) * circumference;
+        const offset = circumference - arcLength;
+        activeArc.setAttribute('stroke-dashoffset', offset);
+        
+        // Ensure the arc starts from the top (North position)
+        activeArc.style.transform = 'rotate(-90deg)';
+        activeArc.style.transformOrigin = '100px 100px';
+    }
+}
+
+/**
+ * Convert mouse/touch position to angle
+ */
+function getPositionAngle(event, svgElement) {
+    const rect = svgElement.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    let clientX, clientY;
+    if (event.touches && event.touches.length > 0) {
+        clientX = event.touches[0].clientX;
+        clientY = event.touches[0].clientY;
+    } else {
+        clientX = event.clientX;
+        clientY = event.clientY;
+    }
+    
+    const dx = clientX - centerX;
+    const dy = clientY - centerY;
+    
+    // Calculate angle in degrees (0° = up/North, positive = clockwise)
+    let angle = Math.atan2(dx, -dy) * (180 / Math.PI);
+    
+    return angle;
+}
+
+/**
+ * Initialize circular slider interactions
+ */
+function initCircularSlider() {
+    const slider = document.getElementById('panCircularSlider');
+    const hiddenSlider = document.getElementById('cameraPanSlider');
+    
+    if (!slider || !hiddenSlider) return;
+    
+    // Prevent double initialization
+    if (slider.dataset.initialized === 'true') return;
+    slider.dataset.initialized = 'true';
+    
+    // Mouse down / touch start
+    const startDrag = (e) => {
+        e.preventDefault();
+        isDraggingSlider = true;
+        slider.style.cursor = 'grabbing';
+        
+        const pan = getPositionAngle(e, slider);
+        updatePanFromCircular(pan);
+    };
+    
+    // Mouse move / touch move
+    const doDrag = (e) => {
+        if (!isDraggingSlider) return;
+        e.preventDefault();
+        
+        const pan = getPositionAngle(e, slider);
+        updatePanFromCircular(pan);
+    };
+    
+    // Mouse up / touch end
+    const stopDrag = (e) => {
+        if (!isDraggingSlider) return;
+        isDraggingSlider = false;
+        slider.style.cursor = 'pointer';
+    };
+    
+    // Event listeners for mouse
+    slider.addEventListener('mousedown', startDrag);
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', stopDrag);
+    
+    // Event listeners for touch
+    slider.addEventListener('touchstart', startDrag, { passive: false });
+    document.addEventListener('touchmove', doDrag, { passive: false });
+    document.addEventListener('touchend', stopDrag);
+}
+
+/**
+ * Update pan value from circular slider interaction
+ */
+function updatePanFromCircular(pan) {
+    // Round to nearest degree
+    pan = Math.round(pan);
+    
+    // Normalize to -180...180
+    while (pan > 180) pan -= 360;
+    while (pan < -180) pan += 360;
+    
+    currentPanAngle = pan;
+    
+    // Update hidden slider value
+    const hiddenSlider = document.getElementById('cameraPanSlider');
+    if (hiddenSlider) {
+        hiddenSlider.value = pan;
+    }
+    
+    // Update display
+    document.getElementById('panValue').textContent = `${pan}°`;
+    
+    // Update visual
+    updateCircularSlider(pan);
+    
+    // Send command with debouncing
+    sendPTZCommandDebounced(pan, cameraState.tilt, cameraState.zoom);
+}
+
+/**
  * Update camera visualization on map (ship marker)
  */
 function updateCameraVisualization() {
@@ -438,16 +578,11 @@ function setupEventListeners() {
         });
     }
     
-    // Camera PTZ sliders - instant response with debouncing
-    const cameraPanSlider = document.getElementById('cameraPanSlider');
-    if (cameraPanSlider) {
-        cameraPanSlider.addEventListener('input', (e) => {
-            const pan = parseFloat(e.target.value);
-            document.getElementById('panValue').textContent = `${pan}°`;
-            sendPTZCommandDebounced(pan, cameraState.tilt, cameraState.zoom);
-        });
-    }
+    // Initialize circular slider for pan control
+    initCircularSlider();
     
+    // Camera PTZ sliders - instant response with debouncing
+    // Note: Pan slider is hidden, controlled by circular slider
     const cameraTiltSlider = document.getElementById('cameraTiltSlider');
     if (cameraTiltSlider) {
         cameraTiltSlider.addEventListener('input', (e) => {
@@ -477,6 +612,9 @@ function initDashboard() {
     if (window.MapManager) {
         window.MapManager.initMap();
     }
+    
+    // Initialize circular slider
+    initCircularSlider();
     
     // Initialize MQTT
     initMQTT();

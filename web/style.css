@@ -197,28 +197,88 @@ body {
     font-weight: 600;
 }
 
-/* Compass Rose for Pan Control */
-.compass-rose {
-    position: relative;
-    width: 100%;
-    height: 30px;
-    margin-top: 5px;
+/* Compass Rose for Pan Control - Hidden with circular slider */
+.compass-rose,
+.pan-slider-hidden {
+    display: none;
+}
+
+/* Circular Slider Container */
+.circular-slider-container {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
-    padding: 0 5px;
+    margin: 15px 0;
+    position: relative;
 }
 
-.compass-point {
-    font-size: 0.75rem;
+/* Circular Slider SVG */
+.circular-slider {
+    width: 200px;
+    height: 200px;
+    cursor: pointer;
+    user-select: none;
+    overflow: visible;
+}
+
+/* Slider Track */
+.slider-track {
+    fill: none;
+    stroke: #0f3460;
+    stroke-width: 12;
+}
+
+/* Slider Active Arc */
+.slider-active {
+    fill: none;
+    stroke: #e94560;
+    stroke-width: 12;
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: 100px 100px;
+    transition: stroke-dashoffset 0.1s ease-out;
+}
+
+/* Slider Indicator (rotates) */
+.slider-indicator {
+    cursor: pointer;
+    transition: transform 0.05s ease-out;
+    pointer-events: none;
+}
+
+.slider-indicator line {
+    filter: drop-shadow(0 0 3px rgba(233, 69, 96, 0.8));
+}
+
+.slider-indicator circle:first-child {
+    filter: drop-shadow(0 0 5px rgba(233, 69, 96, 0.6));
+}
+
+/* Compass Labels */
+.compass-label {
+    font-size: 16px;
     font-weight: bold;
-    color: #e94560;
+    fill: #aaa;
+    pointer-events: none;
+    text-anchor: middle;
+    dominant-baseline: middle;
 }
 
-.compass-point.n { color: #ff6b6b; }
-.compass-point.e { color: #4ade80; }
-.compass-point.s { color: #fbbf24; }
-.compass-point.w { color: #60a5fa; }
+.compass-label.n { fill: #ff6b6b; font-size: 18px; }
+.compass-label.e { fill: #4ade80; }
+.compass-label.s { fill: #fbbf24; }
+.compass-label.w { fill: #60a5fa; }
+
+/* Hover effects */
+.circular-slider:hover .slider-track {
+    stroke: #1a3a5c;
+}
+
+.circular-slider:active .slider-indicator line {
+    stroke: #ff6b6b;
+}
+
+/* Old compass rose hidden */
 
 /* Zoom Slider Value Display */
 #zoomValue, #panValue, #tiltValue {

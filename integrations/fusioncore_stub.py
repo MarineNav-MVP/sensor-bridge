@@ -24,7 +24,10 @@
 import json
 import time
 import logging
+import math
 import paho.mqtt.client as mqtt
+
+from core.camera_utils import AngleTracker, normalize_angle, shortest_angle_diff
 
 # Настройки (можно вынести в .env)
 MQTT_HOST = "localhost"
@@ -51,6 +54,10 @@ class FusionCoreStub:
         self.targets = []
         self.own_ship = None
         self.selected_target_id = None
+        
+        # AngleTracker для непрерывного отслеживания пеленгов цели
+        # Разворачивает нормализованные углы (-180…+180) в непрерывные
+        self.pan_tracker = AngleTracker()
         
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
@@ -114,26 +121,37 @@ class FusionCoreStub:
     
     def calculate_camera_angles(self, target):
         """
-        📷 ТВОЯ ЗАДАЧА: Рассчитать углы камеры для цели
+        📷 Рассчитывает углы камеры для цели с использованием AngleTracker.
+        
+        Использует pan_tracker для разворачивания нормализованных пеленгов
+        в непрерывные углы, что обеспечивает плавный трекинг при переходе
+        через 0° bearing (175° → -175° = поворот на +20°, а не скачок на -340°).
         
         Args:
             target: dict с полями bearing, distance, absolute_position
             
         Returns:
-            tuple: (pan: float, tilt: float)
+            tuple: (pan: float, tilt: float) — оба нормализованы к -180…+180
         """
-        # ===== ВСТАВЬ СВОЙ КОД НИЖЕ =====
+        # ===== ИСПОЛЬЗУЕМ ANGLETRACKER ДЛЯ НЕПРЕРЫВНОГО ТРЕКИНГА =====
         
-        # Простой пример:
-        bearing = target.get('bearing', 0)
+        bearing = target.get('bearing', 0)  # Пеленг 0-360 от радара
         distance = target.get('distance', 1.0)
         
-        # Pan = пеленг (относительный)
-        pan = bearing
+        # Конвертируем абсолютный пеленг (0-360) в относительный (-180…+180)
+        # 0° = прямо по носу, +90° = справа, -90° = слева, ±180° = прямо по корме
+        relative_bearing = normalize_angle(bearing)
+        
+        # Используем AngleTracker для разворачивания углов
+        # Это предотвращает скачки при переходе через 0°
+        continuous_pan = self.pan_tracker.update(relative_bearing)
+        
+        # Для команды камере используем нормализованный угол
+        # CameraEmulator internally выберет кратчайший путь
+        pan = normalize_angle(continuous_pan)
         
         # Tilt: чем дальше цель, тем меньше наклон вниз
         # Высота камеры ~10м, 1 морская миля = 1852м
-        import math
         distance_m = distance * 1852
         tilt_rad = math.atan(10 / distance_m) if distance_m > 0 else 0
         tilt = -math.degrees(tilt_rad)  # отрицательный = наклон вниз
@@ -142,9 +160,9 @@ class FusionCoreStub:
         pan = max(-180, min(180, pan))
         tilt = max(-30, min(30, tilt))
         
-        return pan, tilt
+        logger.debug(f"📷 Target bearing={bearing:.1f}° → pan={pan:.1f}° (continuous={continuous_pan:.1f}°)")
         
-        # ===== КОНЕЦ ПРИМЕРА =====
+        return pan, tilt
     
     def send_ptz_command(self, pan, tilt, zoom, speed=50, mode="absolute"):
         """Отправить команду управления камерой"""
