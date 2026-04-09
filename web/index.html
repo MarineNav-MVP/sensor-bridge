@@ -75,14 +75,29 @@
                     </div>
                     
                     <div class="control-group">
-                        <label for="cameraPanSlider">Pan: <span id="panValue">0°</span></label>
-                        <input type="range" id="cameraPanSlider" min="-180" max="180" value="0">
-                        <div class="compass-rose">
-                            <span class="compass-point n">N</span>
-                            <span class="compass-point e">E</span>
-                            <span class="compass-point s">S</span>
-                            <span class="compass-point w">W</span>
+                        <label>Pan: <span id="panValue">0°</span></label>
+                        <div class="circular-slider-container">
+                            <svg class="circular-slider" viewBox="0 0 200 200" id="panCircularSlider">
+                                <!-- Background circle -->
+                                <circle class="slider-track" cx="100" cy="100" r="80" />
+                                <!-- Active arc -->
+                                <circle class="slider-active" cx="100" cy="100" r="80" 
+                                    stroke-dasharray="502.65" stroke-dashoffset="251.33" />
+                                <!-- Center indicator -->
+                                <g class="slider-indicator" transform="rotate(0, 100, 100)">
+                                    <line x1="100" y1="100" x2="100" y2="30" 
+                                          stroke="#e94560" stroke-width="3" stroke-linecap="round" />
+                                    <circle cx="100" cy="100" r="8" fill="#e94560" />
+                                    <circle cx="100" cy="100" r="4" fill="#fff" />
+                                </g>
+                                <!-- Compass labels -->
+                                <text class="compass-label n" x="100" y="15" text-anchor="middle">N</text>
+                                <text class="compass-label e" x="185" y="105" text-anchor="middle">E</text>
+                                <text class="compass-label s" x="100" y="195" text-anchor="middle">S</text>
+                                <text class="compass-label w" x="15" y="105" text-anchor="middle">W</text>
+                            </svg>
                         </div>
+                        <input type="range" id="cameraPanSlider" min="-180" max="180" value="0" class="pan-slider-hidden" />
                     </div>
                     
                     <div class="control-group">
